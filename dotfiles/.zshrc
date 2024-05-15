@@ -112,3 +112,4 @@ source $ZSH/oh-my-zsh.sh
 
 # ros setup
 source ~/catkin_ws/devel/setup.zsh
+source /opt/ros/noetic/setup.zsh

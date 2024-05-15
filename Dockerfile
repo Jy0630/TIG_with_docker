@@ -67,6 +67,24 @@ RUN apt-get update && apt-get install -y ros-noetic-image-transport
 # Install ros-noetic-laser-geometry
 RUN apt-get update && apt-get install -y ros-noetic-laser-geometry
 
+# Install gazebo
+COPY scripts/gazebo.sh /root/scripts/gazebo.sh
+RUN chmod +x /root/scripts/gazebo.sh
+RUN cd /root && /root/scripts/gazebo.sh
+
+# Install firefox for testing GUI
+RUN apt-get update && apt-get install -y firefox
+
+# Install rviz
+RUN apt-get update && apt-get install -y ros-noetic-rviz
+
+# Allow to run GUI
+RUN apt-get update && apt-get install -y libpci-dev
+RUN apt-get update && apt-get install -y x11-apps
+RUN apt-get update && apt-get install -y qtwayland5
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yqq xserver-xorg
+RUN apt-get update && apt-get install -y xwayland
+
 # Entry point
 COPY scripts/entrypoint.sh /root/scripts/entrypoint.sh
 ENTRYPOINT ["/root/scripts/entrypoint.sh"]
