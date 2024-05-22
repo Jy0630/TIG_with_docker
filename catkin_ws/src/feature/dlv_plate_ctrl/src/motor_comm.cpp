@@ -2,6 +2,7 @@
 #include <geometry_msgs/Twist.h>
 #include <iostream>
 #include <cstdint>
+#include "odom_pub.h"
 
 extern "C"
 {
@@ -19,13 +20,16 @@ void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 
 carInfo car_info_;
+OdomPub* odom_pub_ptr;
 
 int main(int argc, char **argv)
 {
   // ros::Rate r(20);
   ros::init(argc, argv, "motor_comm");
   ros::NodeHandle rosNh;
+  odom_pub_ptr = new OdomPub(rosNh);
   ros::Subscriber velCmdSub = rosNh.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
+  
   serialInit();
   initMsg(&car_info_);
   ros::spin();
@@ -37,6 +41,10 @@ void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
   car_info_.angular_z = msg->angular.z;
   processMsg(&car_info_);
   sendMsg(&car_info_);
+
+  // update odometry based on processed command
+  odom_pub_ptr->updateOdom(car_info_.linear_x, car_info_.angular_z);
+
   return;
 }
 
