@@ -67,10 +67,17 @@ RUN apt-get update && apt-get install -y ros-noetic-image-transport
 # Install ros-noetic-laser-geometry
 RUN apt-get update && apt-get install -y ros-noetic-laser-geometry
 
+# Install ros-noetic-turtlebot3-description
+RUN apt-get update && apt-get install -y ros-noetic-turtlebot3-description
+
 # Install gazebo
 COPY scripts/gazebo.sh /root/scripts/gazebo.sh
 RUN chmod +x /root/scripts/gazebo.sh
 RUN cd /root && /root/scripts/gazebo.sh
+RUN apt-get install ros-noetic-gazebo-ros -y
+#Install ros_xacro
+RUN apt-get install ros-noetic-xacro -y
+
 
 # Install firefox for testing GUI
 RUN apt-get update && apt-get install -y firefox
@@ -84,7 +91,15 @@ RUN apt-get update && apt-get install -y x11-apps
 RUN apt-get update && apt-get install -y qtwayland5
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yqq xserver-xorg
 RUN apt-get update && apt-get install -y xwayland
-
+#Download Gmapping
+RUN apt-get install ros-noetic-gmapping -y
+RUN apt-get install ros-noetic-slam-gmapping -y
+#Save map and opened by gazebo
+RUN apt-get install ros-noetic-map-server -y
+#Download ROS navigation
+RUN apt-get install ros-noetic-navigation -y
+#Support robot can be controled by keyboard
+RUN apt-get install ros-noetic-teleop-twist-keyboard -y
 # Entry point
 COPY scripts/entrypoint.sh /root/scripts/entrypoint.sh
 ENTRYPOINT ["/root/scripts/entrypoint.sh"]

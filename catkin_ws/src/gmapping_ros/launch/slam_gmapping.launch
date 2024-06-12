@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="gmapping" type="slam_gmapping" name="gmapping" >
+        <param name="odom_frame" value="odom" />
+        <param name="base_frame" value="base_footprint" />
+        <param name="laser" value="base_scan"/>
+    </node>
+    <node pkg="tf" 
+          type="static_transform_publisher" 
+          name="link1_broadcaster" 
+          args="0 0 0 0 0 0 1 base_footprint base_scan 100" />
+</launch>
