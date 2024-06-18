@@ -100,6 +100,11 @@ RUN apt-get install ros-noetic-map-server -y
 RUN apt-get install ros-noetic-navigation -y
 #Support robot can be controled by keyboard
 RUN apt-get install ros-noetic-teleop-twist-keyboard -y
+
+RUN apt-get install ros-noetic-rosbridge-server -y
+RUN apt-get install -y python3-pip
+RUN pip install qrcode_terminal tornado
+
 # Entry point
 COPY scripts/entrypoint.sh /root/scripts/entrypoint.sh
 ENTRYPOINT ["/root/scripts/entrypoint.sh"]

@@ -188,7 +188,7 @@ int main(int argc, char** argv){
         // Read response from serial port
        
 
-        if (response.size() > 0) {
+        if ((response_left.size() > 0) && (response_right.size() > 0)) {
             // Parse the response to get wheel angular velocities
             // Assuming the response contains wheel angular velocities in a specific format
             // For example, let's assume response[3] and response[4] contain omega_L and omega_R respectively

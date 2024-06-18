@@ -11,6 +11,8 @@ run:
 		-e QT_X11_NO_MITSHM=1 \
 		--net=host \
 		--name ros-noetic-zsh \
+		-p 9090:9090 \
+		-p 8888:8888 \
 		--ulimit nofile=1024:524288 \
 		--mount type=bind,source=$(shell pwd)/catkin_ws,target=/root/catkin_ws \
 		ros-noetic-zsh:latest
