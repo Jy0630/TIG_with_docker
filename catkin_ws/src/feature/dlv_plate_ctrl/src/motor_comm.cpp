@@ -15,8 +15,10 @@ void initMsg(carInfo *car_info);
 void clearMsg(carInfo *car_info);
 void processMsg(carInfo *car_info);
 void sendMsg(carInfo *car_info);
+void receiveMsg(carInfo *car_info);
 void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
+void readRegister_right(serialData *targetMsg);
 
 carInfo car_info_;
 
@@ -37,6 +39,8 @@ void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
   car_info_.angular_z = msg->angular.z;
   processMsg(&car_info_);
   sendMsg(&car_info_);
+  clearMsg(&car_info_);
+  receiveMsg(&car_info_);
   return;
 }
 
@@ -111,6 +115,13 @@ void initMsg(carInfo *car_info)
   car_info->left_wheel.data[5] = 0;
 }
 
+void receiveMsg(carInfo *car_info) {
+  readRegister_right(&car_info->right_wheel);
+  CRC16Generate(&car_info->right_wheel);
+  transmitData(&car_info->right_wheel);
+  receiveData(&car_info->right_wheel);
+}
+
 void clearMsg(carInfo *car_info)
 {
   clearData(&car_info->right_wheel);
@@ -126,4 +137,45 @@ void clearData(serialData *targetMsg)
   }
   targetMsg->length = 0;
   return;
+}
+
+
+void readRegister_right(serialData *targetMsg){
+    // for more information about the AQMD6010BLs motor controller, find the use manual at page 119
+
+    int input = 0;
+
+    int controller_address = 2;
+    int register_address = 0x34;
+    int registers_numbers = 0x01;
+
+    targetMsg->length = 8;
+    // std::cout << "enter controller address: (dec)" << std::endl;
+    // std::cin >> std::dec >> input;
+    // std::cin.get();
+    // msg.data[0] = (uint8_t)input;
+
+    targetMsg->data[0] = (uint8_t)controller_address;
+
+    targetMsg->data[1] = 0x03;
+
+    // std::cout << "enter register address: (hex)" << std::endl;
+    // std::cin >> std::hex >> input;
+    // std::cin.get();
+    // msg.data[3] = (0xff & input);
+    // msg.data[2] = (0xff & (input >> 8));
+    // std::cout << std::endl;
+    targetMsg->data[3] = (0xff & register_address);
+    targetMsg->data[2] = (0xff & (register_address >> 8));
+
+    // std::cout << "enter numbers of registers: (dec)" << std::endl;
+    // std::cin >> std::dec >> input;
+    // std::cin.get();
+    // msg.data[5] = (0xff & input);
+    // msg.data[4] = (0xff & (input >> 8));
+    // std::cout << std::endl;
+    targetMsg->data[5] = (0xff & registers_numbers);
+    targetMsg->data[4] = (0xff & (registers_numbers >> 8));
+
+    return;
 }
