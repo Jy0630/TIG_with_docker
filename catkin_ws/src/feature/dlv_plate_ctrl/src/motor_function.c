@@ -1,6 +1,6 @@
 #include <motor_function.h>
 
-// #define DEBUG
+ #define DEBUG
 
 static uint8_t CRCHighTable[256] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
@@ -142,6 +142,10 @@ void receiveData(serialData *receiveMsg){
         read(serialPort, &(receiveMsg->data[receiveMsg->length]), 6);
         receiveMsg->length += 6;
     }
+    else if (receiveMsg->data[1] = 0x83) {
+        // Something went wrong
+        read(serialPort, receiveMsg->data, 3);
+    }
     else{
         read(serialPort, &(receiveMsg->data[receiveMsg->length]), 3);
         receiveMsg->length += 3;
@@ -174,4 +178,25 @@ void CRC16Generate(serialData *msg){
     msg->data[msg->length - 1] = CRCHigh;
 
     return;
+}
+
+void CRC16Generate_without_table(serialData *msg) {
+    uint16_t crc = 0xFFFF;
+    for (int pos = 0; pos < msg->length; pos++) {
+        crc ^= msg->data[pos];
+        for (int i = 8; i != 0; i--) {
+            if ((crc & 0x0001) != 0) {
+                crc >>= 1;
+                crc ^= 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+
+    uint16_t CRCLow = (crc & 0xFF); //low crc  
+    uint16_t CRCHigh = ((crc >> 8) & 0xFF); //high crc
+
+    msg->data[msg->length - 2] = CRCLow;
+    msg->data[msg->length - 1] = CRCHigh;
 }

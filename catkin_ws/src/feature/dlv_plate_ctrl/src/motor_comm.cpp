@@ -8,7 +8,7 @@ extern "C"
   #include <motor_function.h>
 }
 
-#define DEBUG
+// #define DEBUG
 
 // Msg {Data, Length, Status}
 void initMsg(carInfo *car_info);
@@ -19,6 +19,7 @@ void receiveMsg(carInfo *car_info);
 void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
+void readRegister_left(serialData *targetMsg);
 
 carInfo car_info_;
 
@@ -33,13 +34,18 @@ int main(int argc, char **argv)
   ros::spin();
 }
 
+int times = 0;
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
   car_info_.linear_x = msg->linear.x;
   car_info_.angular_z = msg->angular.z;
+  std::cout << "----------------------- " << times << " -----------------------\n";
   processMsg(&car_info_);
   sendMsg(&car_info_);
+  std::cout << "----------------------------\n";
   receiveMsg(&car_info_);
+  std::cout << "----------------------- " << times << " -----------------------\n";
+  times++;
   return;
 }
 
@@ -60,6 +66,26 @@ void processMsg(carInfo *car_info)
   std::cout<<"left_wheel_vel: "<<left_wheel_vel<<'\n';
   std::cout<<"---------------------"<<'\n';
   #endif
+
+  clearMsg(car_info);
+  car_info->right_wheel.length = 8;
+  car_info->left_wheel.length = 8;
+
+  // 從站
+  car_info->right_wheel.data[0] = 1;
+  car_info->left_wheel.data[0] = 2;
+
+  // 寫入模式 
+  car_info->right_wheel.data[1] = 6;
+  car_info->left_wheel.data[1] = 6;
+
+
+  // 速度控制 dec(43)
+  car_info->right_wheel.data[2] = 0;
+  car_info->left_wheel.data[2] = 0;
+
+  car_info->right_wheel.data[3] = 67;
+  car_info->left_wheel.data[3] = 67;
 
   car_info->right_wheel.data[4] = (0xff & (int(right_wheel_vel) >> 8));
   car_info->left_wheel.data[4] = (0xff & (int(left_wheel_vel) >> 8));
@@ -114,23 +140,20 @@ void initMsg(carInfo *car_info)
   car_info->left_wheel.data[5] = 0;
 }
 
-int times = 0;
 void receiveMsg(carInfo *car_info) {
   clearMsg(car_info);
-  readRegister_right(&car_info->right_wheel);
-  CRC16Generate(&car_info->right_wheel);
-  transmitData(&car_info->right_wheel);
 
+  readRegister_right(&car_info->right_wheel);
+  readRegister_left(&car_info->left_wheel);
+
+  CRC16Generate(&car_info->right_wheel);
+  CRC16Generate(&car_info->left_wheel);
+
+  transmitData(&car_info->right_wheel);
   receiveData(&car_info->right_wheel);
 
-  times++;
-  std::cout<<"---------------------"<<'\n';
-  for (int i = 0; i< car_info->right_wheel.length; i++) {
-    std::cout<<times<<" " << i << " : " << car_info->right_wheel.data[i] << '\n';
-  }
-  std::cout<<"---------------------"<<'\n';
-
-  clearMsg(car_info);
+  transmitData(&car_info->left_wheel);
+  receiveData(&car_info->left_wheel);
 }
 
 void clearMsg(carInfo *car_info)
@@ -152,32 +175,64 @@ void clearData(serialData *targetMsg)
 
 
 void readRegister_right(serialData *targetMsg){
-    // For more information about the AQMD6010BLs motor controller, find the use manual at page 119
+  // For more information about the AQMD6010BLs motor controller, find the use manual at page 119
 
-    uint16_t controller_address = 2;
-    uint16_t registers_amount = 0x01;
-    uint16_t start_address = 0x34;
-    uint16_t function_code = 0x03;
+  uint16_t controller_address = 2;
+  uint16_t function_code = 0x03;
+  uint16_t start_address = 0x34;
+  uint16_t registers_amount = 0x01;
 
-    targetMsg->length = 6;
+  targetMsg->length = 8;
 
-    // ADR
-    targetMsg->data[0] = controller_address;
+  // ADR
+  targetMsg->data[0] = controller_address;
 
-    // Read function code
-    targetMsg->data[1] = function_code;
+  // Read function code
+  targetMsg->data[1] = function_code;
 
-    // Start register high bit
-    targetMsg->data[2] = 0x00;
+  // Start register high bit
+  targetMsg->data[2] = 0x00;
 
-    // Start register low bit
-    targetMsg->data[3] = start_address;
+  // Start register low bit
+  targetMsg->data[3] = start_address;
 
-    // Register amount high bit
-    targetMsg->data[4] = 0x00;
+  // Register amount high bit
+  targetMsg->data[4] = 0x00;
 
-    // Register amount low bit
-    targetMsg->data[5] = registers_amount;
+  // Register amount low bit
+  targetMsg->data[5] = registers_amount;
 
-    return;
+  return;
 }
+
+void readRegister_left(serialData *targetMsg){
+  // For more information about the AQMD6010BLs motor controller, find the use manual at page 119
+
+  uint16_t controller_address = 1;
+  uint16_t function_code = 0x03;
+  uint16_t start_address = 0x34;
+  uint16_t registers_amount = 0x01;
+
+  targetMsg->length = 8;
+
+  // ADR
+  targetMsg->data[0] = controller_address;
+
+  // Read function code
+  targetMsg->data[1] = function_code;
+
+  // Start register high bit
+  targetMsg->data[2] = 0x00;
+
+  // Start register low bit
+  targetMsg->data[3] = start_address;
+
+  // Register amount high bit
+  targetMsg->data[4] = 0x00;
+
+  // Register amount low bit
+  targetMsg->data[5] = registers_amount;
+
+  return;
+}
+

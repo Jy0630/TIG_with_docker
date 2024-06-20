@@ -31,5 +31,6 @@ void serialInit();
 void transmitData(serialData *transmitMsg);
 void receiveData(serialData *receiveMsg);
 void CRC16Generate(serialData *msg);
+void CRC16Generate_without_table(serialData *msg);
 
 #endif
