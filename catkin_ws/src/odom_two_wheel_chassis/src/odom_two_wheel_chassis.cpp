@@ -146,7 +146,7 @@ int main(int argc, char** argv){
     current_time = ros::Time::now();
     last_time = ros::Time::now();
 
-    std::string portName = "/dev/ttyS0"; // Adjust the port name accordingly
+    std::string portName = "/dev/ttyUSB0"; // Adjust the port name accordingly
     int serialPort = openSerialPort(portName);
 
     if (serialPort == -1) {

@@ -37,8 +37,8 @@ void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
   car_info_.linear_x = msg->linear.x;
   car_info_.angular_z = msg->angular.z;
-  // processMsg(&car_info_);
-  // sendMsg(&car_info_);
+  processMsg(&car_info_);
+  sendMsg(&car_info_);
   receiveMsg(&car_info_);
   return;
 }
@@ -120,6 +120,7 @@ void receiveMsg(carInfo *car_info) {
   readRegister_right(&car_info->right_wheel);
   CRC16Generate(&car_info->right_wheel);
   transmitData(&car_info->right_wheel);
+
   receiveData(&car_info->right_wheel);
 
   times++;
@@ -154,7 +155,6 @@ void readRegister_right(serialData *targetMsg){
     // For more information about the AQMD6010BLs motor controller, find the use manual at page 119
 
     uint16_t controller_address = 2;
-    uint16_t register_address = 0x00;
     uint16_t registers_amount = 0x01;
     uint16_t start_address = 0x34;
     uint16_t function_code = 0x03;
