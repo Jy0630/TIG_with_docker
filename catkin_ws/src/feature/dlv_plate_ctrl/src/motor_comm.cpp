@@ -19,7 +19,9 @@ void receiveMsg(carInfo *car_info);
 void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
+void readRegister_right_judge(serialData *targetMsg);
 void readRegister_left(serialData *targetMsg);
+void readRegister_left_judge(serialData *targetMsg);
 
 carInfo car_info_;
 
@@ -100,11 +102,11 @@ void processMsg(carInfo *car_info)
 
 void sendMsg(carInfo *car_info)
 {
-  transmitData(&car_info->right_wheel);
-  receiveData(&car_info->right_wheel);
-
   transmitData(&car_info->left_wheel);
   receiveData(&car_info->left_wheel);
+
+  transmitData(&car_info->right_wheel);
+  receiveData(&car_info->right_wheel);
 
   return;
 }
@@ -142,6 +144,7 @@ void initMsg(carInfo *car_info)
 
 void receiveMsg(carInfo *car_info) {
   clearMsg(car_info);
+  
 
   readRegister_right(&car_info->right_wheel);
   readRegister_left(&car_info->left_wheel);
@@ -180,7 +183,9 @@ void readRegister_right(serialData *targetMsg){
   uint16_t controller_address = 2;
   uint16_t function_code = 0x03;
   uint16_t start_address = 0x34;
-  uint16_t registers_amount = 0x01;
+  uint16_t registers_amount = 0x02;
+
+
 
   targetMsg->length = 8;
 
@@ -204,6 +209,8 @@ void readRegister_right(serialData *targetMsg){
 
   return;
 }
+
+
 
 void readRegister_left(serialData *targetMsg){
   // For more information about the AQMD6010BLs motor controller, find the use manual at page 119
@@ -211,7 +218,7 @@ void readRegister_left(serialData *targetMsg){
   uint16_t controller_address = 1;
   uint16_t function_code = 0x03;
   uint16_t start_address = 0x34;
-  uint16_t registers_amount = 0x01;
+  uint16_t registers_amount = 0x02;
 
   targetMsg->length = 8;
 
@@ -235,4 +242,5 @@ void readRegister_left(serialData *targetMsg){
 
   return;
 }
+
 
