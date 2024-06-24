@@ -19,9 +19,8 @@ void receiveMsg(carInfo *car_info);
 void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
-void readRegister_right_judge(serialData *targetMsg);
 void readRegister_left(serialData *targetMsg);
-void readRegister_left_judge(serialData *targetMsg);
+
 
 carInfo car_info_;
 
@@ -184,8 +183,9 @@ void readRegister_right(serialData *targetMsg){
   uint16_t function_code = 0x03;
   uint16_t start_address = 0x34;
   uint16_t registers_amount = 0x02;
-
-
+  #ifdef DEBUG
+  uint16_t registers_amount = 0x01;
+  #endif
 
   targetMsg->length = 8;
 
@@ -219,7 +219,9 @@ void readRegister_left(serialData *targetMsg){
   uint16_t function_code = 0x03;
   uint16_t start_address = 0x34;
   uint16_t registers_amount = 0x02;
-
+  #ifdef DEBUG
+  uint16_t registers_amount = 0x01;
+  #endif
   targetMsg->length = 8;
 
   // ADR

@@ -1,6 +1,6 @@
 #include <motor_function.h>
 
- #define DEBUG
+// #define DEBUG
 
 static uint8_t CRCHighTable[256] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
@@ -110,13 +110,12 @@ void serialInit(){
 }
 
 void transmitData(serialData *transmitMsg){
-    #ifdef DEBUG
     printf("transmitMsg is :\n");
     for(int i = 0; i < transmitMsg->length; i++){
         printf("%x ", transmitMsg->data[i]);
     }
     printf("\n\n");
-    #endif
+
 
     write(serialPort, transmitMsg->data, transmitMsg->length);
 
@@ -130,13 +129,23 @@ void receiveData(serialData *receiveMsg){
 
     receiveMsg->length = 2;
     read(serialPort, receiveMsg->data, 2);
-
+    #ifdef DEBUG
     if(receiveMsg->data[1] == 0x03){
         read(serialPort, &(receiveMsg->data[receiveMsg->length]), 1);
         receiveMsg->length += 1;
 
         read(serialPort, &(receiveMsg->data[receiveMsg->length]), (receiveMsg->data[2] + 2));
         receiveMsg->length += receiveMsg->data[2] + 2;
+    }
+    #endif
+    if(receiveMsg->data[1] == 0x03)
+    {
+        read(serialPort, &(receiveMsg->data[receiveMsg->length]),1);//read content_3
+        receiveMsg->length += 1;
+
+        read(serialPort,&(receiveMsg->data[receiveMsg->length]),(receiveMsg->data[2]+4));
+        receiveMsg->length += receiveMsg->data[2] + 2; 
+    
     }
     else if(receiveMsg->data[1] = 0x06){
         read(serialPort, &(receiveMsg->data[receiveMsg->length]), 6);
@@ -163,13 +172,13 @@ void receiveData(serialData *receiveMsg){
         printf("modified_local_rpm = %hhx \n",rpm_local);
     }
 
-    #ifdef DEBUG
+    //#ifdef DEBUG
     printf("receiveMsg is : \n");
     for(int i = 0; i < receiveMsg->length; i++){
         printf("%hhx ", receiveMsg->data[i]);
     }
     printf("\n\n");
-    #endif
+    // #endif
 
     return;
 }
