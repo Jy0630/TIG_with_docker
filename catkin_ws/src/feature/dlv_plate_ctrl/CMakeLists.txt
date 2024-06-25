@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   geometry_msgs
+  std_msgs
 )
 
 catkin_package(
@@ -22,3 +23,7 @@ target_link_libraries(motor_tool motor_tool_library ${catkin_LIBRARIES})
 
 add_executable(motor_comm src/motor_comm.cpp)
 target_link_libraries(motor_comm motor_tool_library ${catkin_LIBRARIES})
+
+add_executable(test_sub src/test_sub.cpp)
+add_dependencies(test_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(test_sub ${catkin_LIBRARIES})

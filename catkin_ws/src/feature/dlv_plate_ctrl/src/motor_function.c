@@ -160,18 +160,6 @@ void receiveData(serialData *receiveMsg){
         receiveMsg->length += 3;
     }
 
-    if(receiveMsg->length >= 9)//judge the rpm is needed to times 10 or not
-    {
-        int rpm_local = 0;
-        rpm_local |= receiveMsg->data[3];
-        rpm_local = (rpm_local << 8);
-        rpm_local += receiveMsg->data[4];
-        if(receiveMsg->data[6]){
-            rpm_local = rpm_local * 10;
-        }
-        printf("modified_local_rpm = %hhx \n",rpm_local);
-    }
-
     //#ifdef DEBUG
     printf("receiveMsg is : \n");
     for(int i = 0; i < receiveMsg->length; i++){

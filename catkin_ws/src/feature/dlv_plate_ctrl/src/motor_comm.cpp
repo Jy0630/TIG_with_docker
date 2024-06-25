@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Float64.h>
 #include <iostream>
 #include <cstdint>
 
@@ -20,6 +21,7 @@ void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
 void readRegister_left(serialData *targetMsg);
+void CaclRpm(carInfo *carinfo);
 
 
 carInfo car_info_;
@@ -28,25 +30,34 @@ int main(int argc, char **argv)
 {
   // ros::Rate r(20);
   ros::init(argc, argv, "motor_comm");
-  ros::NodeHandle rosNh;
-  ros::Subscriber velCmdSub = rosNh.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
+  ros::NodeHandle rosNh_sub;
+  ros::Publisher rightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/right_wheel/rpm",1);
+  ros::Publisher leftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/left_wheel/rpm",1);
+  ros::Subscriber velCmdSub = rosNh_sub.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
   serialInit();
   initMsg(&car_info_);
-  ros::spin();
+  while(ros::ok())
+  {
+    std_msgs::Float64 right_rpm_msg, left_rpm_msg;
+    receiveMsg(&car_info_);
+    CaclRpm(&car_info_);
+    right_rpm_msg.data = car_info_.right_rpm,left_rpm_msg.data = car_info_.left_rpm;
+    rightRpmPub.publish(right_rpm_msg);
+    leftRpmPub.publish(left_rpm_msg);
+    std::cout << "right wheel rpm = " << car_info_.right_rpm << " " << "left wheel rpm = " << car_info_.left_rpm << "\n";
+    ros::spinOnce();
+  }
+
+
 }
 
-int times = 0;
+ int times = 0;
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
   car_info_.linear_x = msg->linear.x;
   car_info_.angular_z = msg->angular.z;
-  std::cout << "----------------------- " << times << " -----------------------\n";
   processMsg(&car_info_);
   sendMsg(&car_info_);
-  std::cout << "----------------------------\n";
-  receiveMsg(&car_info_);
-  std::cout << "----------------------- " << times << " -----------------------\n";
-  times++;
   return;
 }
 
@@ -133,7 +144,6 @@ void initMsg(carInfo *car_info)
   car_info->right_wheel.data[3] = 67;
   car_info->left_wheel.data[3] = 67;
 
-  // 初始速度 0
   car_info->right_wheel.data[4] = 0;
   car_info->left_wheel.data[4] = 0;
 
@@ -156,6 +166,7 @@ void receiveMsg(carInfo *car_info) {
 
   transmitData(&car_info->left_wheel);
   receiveData(&car_info->left_wheel);
+
 }
 
 void clearMsg(carInfo *car_info)
@@ -219,9 +230,7 @@ void readRegister_left(serialData *targetMsg){
   uint16_t function_code = 0x03;
   uint16_t start_address = 0x34;
   uint16_t registers_amount = 0x02;
-  #ifdef DEBUG
-  uint16_t registers_amount = 0x01;
-  #endif
+  
   targetMsg->length = 8;
 
   // ADR
@@ -244,5 +253,33 @@ void readRegister_left(serialData *targetMsg){
 
   return;
 }
+
+void CaclRpm(carInfo *carinfo)
+{
+  if(carinfo->right_wheel.length >= 9)//judge the rpm is needed to times 10 or not
+  {
+    int rpm_local = 0;
+    rpm_local |= carinfo->right_wheel.data[3];
+    rpm_local = (rpm_local << 8);
+    rpm_local += carinfo->right_wheel.data[4];
+    if(carinfo->right_wheel.data[6]) {
+        rpm_local = rpm_local * 10;
+    }
+      carinfo->right_rpm = rpm_local;
+  }
+
+  if(carinfo->left_wheel.length >= 9)//judge the rpm is needed to times 10 or not
+  {
+    int rpm_local = 0;
+    rpm_local |= carinfo->left_wheel.data[3];
+    rpm_local = (rpm_local << 8);
+    rpm_local += carinfo->left_wheel.data[4];
+    if(carinfo->left_wheel.data[6]){
+        rpm_local = rpm_local * 10;
+    }
+    carinfo->left_rpm = rpm_local;
+  }
+}
+
 
 
