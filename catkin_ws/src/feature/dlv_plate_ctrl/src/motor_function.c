@@ -1,6 +1,6 @@
 #include <motor_function.h>
 
-// #define DEBUG
+#define DEBUG
 
 static uint8_t CRCHighTable[256] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
@@ -110,12 +110,13 @@ void serialInit(){
 }
 
 void transmitData(serialData *transmitMsg){
+    #ifdef DEBUG
     printf("transmitMsg is :\n");
     for(int i = 0; i < transmitMsg->length; i++){
         printf("%x ", transmitMsg->data[i]);
     }
     printf("\n\n");
-
+    #endif
 
     write(serialPort, transmitMsg->data, transmitMsg->length);
 
@@ -160,25 +161,13 @@ void receiveData(serialData *receiveMsg){
         receiveMsg->length += 3;
     }
 
-    if(receiveMsg->length >= 9)//judge the rpm is needed to times 10 or not
-    {
-        int rpm_local = 0;
-        rpm_local |= receiveMsg->data[3];
-        rpm_local = (rpm_local << 8);
-        rpm_local += receiveMsg->data[4];
-        if(receiveMsg->data[6]){
-            rpm_local = rpm_local * 10;
-        }
-        printf("modified_local_rpm = %hhx \n",rpm_local);
-    }
-
-    //#ifdef DEBUG
+    #ifdef DEBUG
     printf("receiveMsg is : \n");
     for(int i = 0; i < receiveMsg->length; i++){
         printf("%hhx ", receiveMsg->data[i]);
     }
     printf("\n\n");
-    // #endif
+    #endif
 
     return;
 }

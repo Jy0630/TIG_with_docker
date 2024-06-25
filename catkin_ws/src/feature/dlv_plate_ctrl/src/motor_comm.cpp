@@ -8,7 +8,7 @@ extern "C"
   #include <motor_function.h>
 }
 
-// #define DEBUG
+#define DEBUG
 
 // Msg {Data, Length, Status}
 void initMsg(carInfo *car_info);
@@ -21,8 +21,11 @@ void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
 void readRegister_left(serialData *targetMsg);
 
+void Calcrpm(carInfo *carinfo);
+
 
 carInfo car_info_;
+
 
 int main(int argc, char **argv)
 {
@@ -32,21 +35,26 @@ int main(int argc, char **argv)
   ros::Subscriber velCmdSub = rosNh.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
   serialInit();
   initMsg(&car_info_);
+  #ifdef DEBUG
+  while(ros::ok()) {
+    receiveMsg(&car_info_);
+    Calcrpm(&car_info_);
+    std::cout << "left wheel rpm is: " << car_info_.left_rpm << " " << "right wheel ropm is:" << car_info_.left_rpm << "\n"; 
+    ros::spinOnce();
+  }
+  #endif
   ros::spin();
 }
 
-int times = 0;
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
   car_info_.linear_x = msg->linear.x;
   car_info_.angular_z = msg->angular.z;
-  std::cout << "----------------------- " << times << " -----------------------\n";
   processMsg(&car_info_);
   sendMsg(&car_info_);
-  std::cout << "----------------------------\n";
   receiveMsg(&car_info_);
-  std::cout << "----------------------- " << times << " -----------------------\n";
-  times++;
+  // Calcrpm(&car_info_);
+  // std::cout << "left wheel rpm is: " << car_info_.left_rpm << " " << "right wheel ropm is:" << car_info_.left_rpm << "\n"; 
   return;
 }
 
@@ -244,5 +252,31 @@ void readRegister_left(serialData *targetMsg){
 
   return;
 }
+#ifdef DEBUG
+void Calcrpm(carInfo *carinfo)
+{
 
-
+    if(carinfo->right_wheel.length >= 9)//judge the rpm is needed to times 10 or not
+    {
+        int rpm_local = 0;
+        rpm_local |= carinfo->right_wheel.data[3];
+        rpm_local = (rpm_local << 8);
+        rpm_local += carinfo->right_wheel.data[4];
+        if(carinfo->right_wheel.data[6]){
+            rpm_local = rpm_local * 10;
+        }
+        carinfo->right_rpm = rpm_local;
+    }
+    if(carinfo->left_wheel.length >= 9)//judge the rpm is needed to times 10 or not
+    {
+        int rpm_local = 0;
+        rpm_local |= carinfo->left_wheel.data[3];
+        rpm_local = (rpm_local << 8);
+        rpm_local += carinfo->left_wheel.data[4];
+        if(carinfo->left_wheel.data[6]){
+            rpm_local = rpm_local * 10;
+        }
+        carinfo->left_rpm = rpm_local;
+    }
+}
+#endif

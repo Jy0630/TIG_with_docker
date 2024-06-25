@@ -105,6 +105,8 @@ RUN apt-get install ros-noetic-rosbridge-server -y
 RUN apt-get install -y python3-pip
 RUN pip install qrcode_terminal tornado
 
+WORKDIR /root/catkin_ws
+
 # Entry point
 COPY scripts/entrypoint.sh /root/scripts/entrypoint.sh
 ENTRYPOINT ["/root/scripts/entrypoint.sh"]
