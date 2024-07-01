@@ -44,7 +44,7 @@ void CallBack_left(const std_msgs::Float64::ConstPtr& Omega)
 {
     angularvel.omega_left = Omega->data;
     angularvel.omega_left /= 60;//RoundPerSecond
-    angularvel.omega_left *= (2 * M_PI);
+    angularvel.omega_left *= (0.2 * M_PI);//acheive omega of left wheel
 
 }
 
@@ -52,21 +52,21 @@ void CallBack_right(const std_msgs::Float64::ConstPtr& Omega)
 {
     angularvel.omega_right = Omega->data;
     angularvel.omega_right /= 60;
-    angularvel.omega_right *= (2 * M_PI);
+    angularvel.omega_right *= (0.2 * M_PI);
 }
 
 void CalculatePostion(AngularVel* angularvel, Position* position){
 
-    ros::Time current_time, last_time;
-    current_time = ros::Time::now();
-    last_time = ros::Time::now();
+    // ros::Time current_time, last_time;
+    
+    static ros::Time last_time = ros::Time::now();
 
-    double R = 0.15;  // 轮子半径
+    double R = 0.075;  // 轮子半径 ?0.075
     double L = 0.63;  // 轮子间的轴距
 
-    ros::Rate r(1.0);
+    ros::Rate r(10);
    
-    current_time = ros::Time::now();
+    ros::Time current_time = ros::Time::now();
 
     // Compute time step
     double dt = (current_time - last_time).toSec();       
@@ -97,6 +97,7 @@ void CalculatePostion(AngularVel* angularvel, Position* position){
     std::cout<<"-------------------------------------------------------------\n";
     #endif
 
+    last_time = current_time;
     return;
 }
 
