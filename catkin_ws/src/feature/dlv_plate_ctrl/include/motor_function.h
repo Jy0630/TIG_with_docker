@@ -25,8 +25,8 @@ typedef struct {
   serialData left_wheel;
   double linear_x;
   double angular_z;
-  double right_rpm;
   double left_rpm;
+  double right_rpm;
 }carInfo;
 
 void serialInit();

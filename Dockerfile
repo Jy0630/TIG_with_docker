@@ -17,7 +17,7 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
 
 # Install p10k
 RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/g' ~/.zshrc
+RUN sed -i 's/ZSH_THEME="robbyrussel}l"/ZSH_THEME="powerlevel10k\/powerlevel10k"/g' ~/.zshrc
 COPY dotfiles/.p10k.zsh /root/.p10k.zsh
 COPY dotfiles/.zshrc /root/.zshrc
 

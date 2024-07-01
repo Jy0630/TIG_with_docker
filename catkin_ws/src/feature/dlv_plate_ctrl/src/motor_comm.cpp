@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Float64.h>
 #include <iostream>
 #include <cstdint>
 
@@ -8,7 +9,7 @@ extern "C"
   #include <motor_function.h>
 }
 
-#define DEBUG
+// #define DEBUG
 
 // Msg {Data, Length, Status}
 void initMsg(carInfo *car_info);
@@ -20,8 +21,7 @@ void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_right(serialData *targetMsg);
 void readRegister_left(serialData *targetMsg);
-
-void Calcrpm(carInfo *carinfo);
+void CaclRpm(carInfo *carinfo);
 
 
 carInfo car_info_;
@@ -30,31 +30,43 @@ carInfo car_info_;
 int main(int argc, char **argv)
 {
   // ros::Rate r(20);
-  ros::init(argc, argv, "motor_comm");
-  ros::NodeHandle rosNh;
-  ros::Subscriber velCmdSub = rosNh.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
+  ros::init(argc, argv, "motor_comm");//can only have one node name "motor_comm"
+  ros::NodeHandle rosNh_sub;
+  ros::Publisher rightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/right_wheel/rpm",1);//But can have more than one topic. Ex:"/right_wheel/rpm"  and /left_wheel/rpm" 
+  ros::Publisher leftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/left_wheel/rpm",1);
+  ros::Subscriber velCmdSub = rosNh_sub.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
   serialInit();
   initMsg(&car_info_);
-  #ifdef DEBUG
-  while(ros::ok()) {
+  
+  std_msgs::Float64 right_rpm_msg, left_rpm_msg;
+  while(ros::ok())
+  {
     receiveMsg(&car_info_);
-    Calcrpm(&car_info_);
-    std::cout << "left wheel rpm is: " << car_info_.left_rpm << " " << "right wheel ropm is:" << car_info_.left_rpm << "\n"; 
+    CaclRpm(&car_info_);
+    right_rpm_msg.data = car_info_.right_rpm,left_rpm_msg.data = car_info_.left_rpm;//
+    if(right_rpm_msg.data > 32767){
+      right_rpm_msg.data-=65536;
+    }
+    if(left_rpm_msg.data > 32767){
+      left_rpm_msg.data-=65536;
+    }
+    left_rpm_msg.data*=-1;
+    rightRpmPub.publish(right_rpm_msg);
+    leftRpmPub.publish(left_rpm_msg);
+    std::cout << "right wheel rpm = " << right_rpm_msg.data << " " << "left wheel rpm = " << left_rpm_msg.data << "\n";
     ros::spinOnce();
   }
-  #endif
-  ros::spin();
+
+
 }
 
+ int times = 0;
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
   car_info_.linear_x = msg->linear.x;
   car_info_.angular_z = msg->angular.z;
   processMsg(&car_info_);
   sendMsg(&car_info_);
-  receiveMsg(&car_info_);
-  // Calcrpm(&car_info_);
-  // std::cout << "left wheel rpm is: " << car_info_.left_rpm << " " << "right wheel ropm is:" << car_info_.left_rpm << "\n"; 
   return;
 }
 
@@ -102,6 +114,8 @@ void processMsg(carInfo *car_info)
   car_info->right_wheel.data[5] = (0xff & int(right_wheel_vel));
   car_info->left_wheel.data[5] = (0xff & int(left_wheel_vel));
 
+  std::cout << "car_info->right_wheel.data[4] = " << (0xff & (int(right_wheel_vel) >> 8)) << "car_info->left_wheel.data[4] = " << (0xff & int(left_wheel_vel)) << "\n";
+
   CRC16Generate(&car_info->right_wheel);
   CRC16Generate(&car_info->left_wheel);
   return;
@@ -141,7 +155,6 @@ void initMsg(carInfo *car_info)
   car_info->right_wheel.data[3] = 67;
   car_info->left_wheel.data[3] = 67;
 
-  // 初始速度 0
   car_info->right_wheel.data[4] = 0;
   car_info->left_wheel.data[4] = 0;
 
@@ -164,6 +177,7 @@ void receiveMsg(carInfo *car_info) {
 
   transmitData(&car_info->left_wheel);
   receiveData(&car_info->left_wheel);
+
 }
 
 void clearMsg(carInfo *car_info)
@@ -189,11 +203,8 @@ void readRegister_right(serialData *targetMsg){
 
   uint16_t controller_address = 2;
   uint16_t function_code = 0x03;
-  uint16_t start_address = 0x34;
-  uint16_t registers_amount = 0x02;
-  #ifdef DEBUG
+  uint16_t start_address = 0x22;
   uint16_t registers_amount = 0x01;
-  #endif
 
   targetMsg->length = 8;
 
@@ -225,11 +236,9 @@ void readRegister_left(serialData *targetMsg){
 
   uint16_t controller_address = 1;
   uint16_t function_code = 0x03;
-  uint16_t start_address = 0x34;
-  uint16_t registers_amount = 0x02;
-  #ifdef DEBUG
+  uint16_t start_address = 0x22;
   uint16_t registers_amount = 0x01;
-  #endif
+  
   targetMsg->length = 8;
 
   // ADR
@@ -252,31 +261,28 @@ void readRegister_left(serialData *targetMsg){
 
   return;
 }
-#ifdef DEBUG
-void Calcrpm(carInfo *carinfo)
-{
 
-    if(carinfo->right_wheel.length >= 9)//judge the rpm is needed to times 10 or not
-    {
-        int rpm_local = 0;
-        rpm_local |= carinfo->right_wheel.data[3];
-        rpm_local = (rpm_local << 8);
-        rpm_local += carinfo->right_wheel.data[4];
-        if(carinfo->right_wheel.data[6]){
-            rpm_local = rpm_local * 10;
-        }
-        carinfo->right_rpm = rpm_local;
-    }
-    if(carinfo->left_wheel.length >= 9)//judge the rpm is needed to times 10 or not
-    {
-        int rpm_local = 0;
-        rpm_local |= carinfo->left_wheel.data[3];
-        rpm_local = (rpm_local << 8);
-        rpm_local += carinfo->left_wheel.data[4];
-        if(carinfo->left_wheel.data[6]){
-            rpm_local = rpm_local * 10;
-        }
-        carinfo->left_rpm = rpm_local;
-    }
+void CaclRpm(carInfo *carinfo)
+{
+  if(carinfo->right_wheel.length >=7)//judge the rpm is needed to times 10 or not
+  {
+    int rpm_local = 0;
+    rpm_local |= carinfo->right_wheel.data[3];
+    rpm_local = (rpm_local << 8);
+    rpm_local += carinfo->right_wheel.data[4];
+    carinfo->right_rpm = rpm_local;
+  }
+
+  if(carinfo->left_wheel.length >= 7)//judge the rpm is needed to times 10 or not
+  {
+    int rpm_local = 0;
+    rpm_local |= carinfo->left_wheel.data[3];
+    rpm_local = (rpm_local << 8);
+    rpm_local += carinfo->left_wheel.data[4];
+    carinfo->left_rpm = rpm_local;
+  }
 }
-#endif
+
+
+
+
