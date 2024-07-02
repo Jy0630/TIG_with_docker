@@ -112,6 +112,9 @@ RUN apt-get install ros-noetic-rosbridge-server -y
 RUN apt-get install -y python3-pip
 RUN pip install qrcode_terminal tornado
 
+# Install tmux
+RUN apt-get install tmux -y
+
 WORKDIR /root/catkin_ws
 
 # Entry point
