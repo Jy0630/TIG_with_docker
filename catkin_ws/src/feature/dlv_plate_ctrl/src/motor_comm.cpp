@@ -75,11 +75,11 @@ void processMsg(carInfo *car_info)
   double linear_x = car_info->linear_x;
   double angular_z = car_info->angular_z;
 
-  double wheel_radius = 0.15;
-  double axis_length = 0.63;
+  double wheel_radius = 0.075;
+  double axis_length = 0.62;
 
-  double right_wheel_vel = -120 * (linear_x + angular_z * axis_length) / wheel_radius;
-  double left_wheel_vel = 120 * (linear_x  - angular_z * axis_length) / wheel_radius;
+  double right_wheel_vel = -100 * (linear_x + angular_z * axis_length) / wheel_radius;
+  double left_wheel_vel = 100 * (linear_x  - angular_z * axis_length) / wheel_radius;
 
   #ifdef DEBUG
   std::cout<<"---------------------"<<'\n';

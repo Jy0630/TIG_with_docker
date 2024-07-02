@@ -44,7 +44,7 @@ void CallBack_left(const std_msgs::Float64::ConstPtr& Omega)
 {
     angularvel.omega_left = Omega->data;
     angularvel.omega_left /= 60;//RoundPerSecond
-    angularvel.omega_left *= (0.2 * M_PI);//acheive omega of left wheel
+    angularvel.omega_left *= (0.1 * M_PI);//acheive omega of left wheel
 
 }
 
@@ -52,7 +52,7 @@ void CallBack_right(const std_msgs::Float64::ConstPtr& Omega)
 {
     angularvel.omega_right = Omega->data;
     angularvel.omega_right /= 60;
-    angularvel.omega_right *= (0.2 * M_PI);
+    angularvel.omega_right *= (0.1 * M_PI);
 }
 
 void CalculatePostion(AngularVel* angularvel, Position* position){
@@ -62,7 +62,7 @@ void CalculatePostion(AngularVel* angularvel, Position* position){
     static ros::Time last_time = ros::Time::now();
 
     double R = 0.075;  // 轮子半径 ?0.075
-    double L = 0.63;  // 轮子间的轴距
+    double L = 0.62;  // 轮子间的轴距
 
     ros::Rate r(10);
    
@@ -71,10 +71,10 @@ void CalculatePostion(AngularVel* angularvel, Position* position){
     // Compute time step
     double dt = (current_time - last_time).toSec();       
 
-    #ifdef DEBUG
-    std::cout<<"omega_L is " << angularvel->omega_left <<"\n";
-    std::cout<<"omega_R is " << angularvel->omega_right <<"\n";
-    #endif
+    // #ifdef DEBUG
+    // std::cout<<"omega_L is " << angularvel->omega_left <<"\n";
+    // std::cout<<"omega_R is " << angularvel->omega_right <<"\n";
+    // #endif
 
     // Calculate motion state
     MotionState motion = CalculateMotion(angularvel, R, L, position, dt);
@@ -93,8 +93,9 @@ void CalculatePostion(AngularVel* angularvel, Position* position){
     // #endif
 
     #ifdef DEBUG
-    std::cout << "x is " << position->x << ", y is " << position->y <<", theta_z is " << ((position->th) * 180 / 3.1416) << "\n";
-    std::cout<<"-------------------------------------------------------------\n";
+    std::cout << position->x <<' '<< position->y << ' '<<((position->th) * 180 / 3.1416) << "\n";
+    // std::cout << "x is " << position->x << ", y is " << position->y <<", theta_z is " << ((position->th) * 180 / 3.1416) << "\n";
+    // std::cout<<"-------------------------------------------------------------\n";
     #endif
 
     last_time = current_time;
@@ -112,15 +113,15 @@ MotionState CalculateMotion(AngularVel* angularvel, double R, double L, Position
     
 
     // 计算 x 和 y 方向的速度
-    double vx = v * cos(position->th);
-    double vy = v * sin(position->th);
+    double vx = v * cos(position->th );
+    double vy = v * sin(position->th );
 
 
 
-    #ifdef DEBUG
-    std::cout<<"vx is "<<vx<<", vy is "<<vy<<", omega_z is "<<omega<<"\n";
-    std::cout<<"-------------------------------------------------------------\n";
-    #endif
+    // #ifdef DEBUG
+    // std::cout<<"vx is "<<vx<<", vy is "<<vy<<", omega_z is "<<omega<<"\n";
+    // std::cout<<"-------------------------------------------------------------\n";
+    // #endif
 
     return {vx, vy, omega};
 }
@@ -140,20 +141,18 @@ int main(int argc,char **argv)
     while(ros::ok())
     {
 
-
-
         CalculatePostion(&angularvel,&position);
         geometry_msgs::Point msg;
         #ifdef DEBUG
-        std::cout<<"x is "<<position.x<<", y is "<<position.y<<"theta_z is "<<position.th<<"\n";
+        // std::cout<<"x is "<<position.x<<", y is "<<position.y<<"theta_z is "<<position.th<<"\n";
         #endif
         msg.x = position.x;
         msg.y = position.y;
         msg.z = position.th;
         Pub_pos.publish(msg);
-        #ifdef DEBUG
-        std::cout<<"x is "<<msg.x<<", y is "<<msg.y<<"theta_z is "<<msg.z<<"\n";
-        #endif
+        // #ifdef DEBUG
+        // std::cout<<"x is "<<msg.x<<", y is "<<msg.y<<"theta_z is "<<(msg.z * 180 / M_PI)<<"\n";
+        // #endif
 
 
         ros::spinOnce();
