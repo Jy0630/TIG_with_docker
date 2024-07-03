@@ -115,6 +115,12 @@ RUN pip install qrcode_terminal tornado
 # Install tmux
 RUN apt-get install tmux -y
 
+# Yolo visual package
+RUN pip install opencv-python-headless
+RUN pip install torch torchvision
+RUN pip install numpy
+RUN pip install ultralytics
+
 WORKDIR /root/catkin_ws
 
 # Entry point
