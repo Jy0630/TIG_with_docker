@@ -6,7 +6,7 @@ run:
 	-docker run -it \
 	    --privileged \
 		--env="DISPLAY" \
-		-v /dev/ttyUSB0:/dev/ttyUSB0 \
+		-v /dev/ttyRplidar_s2:/dev/ttyRplidar_s2 \
 		-v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 		-e XDG_RUNTIME_DIR=/tmp \
 		-e QT_X11_NO_MITSHM=1 \
