@@ -115,6 +115,12 @@ RUN pip install qrcode_terminal tornado
 # Install tmux
 RUN apt-get install tmux -y
 
+# Install rqt_tf_tree
+RUN apt-get install ros-noetic-rqt-tf-tree -y
+
+# Install robot state publisher
+RUN apt-get install ros-noetic-robot-state-publisher -y
+
 WORKDIR /root/catkin_ws
 
 # Entry point
