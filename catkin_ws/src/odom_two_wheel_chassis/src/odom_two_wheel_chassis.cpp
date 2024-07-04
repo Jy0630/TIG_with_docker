@@ -12,6 +12,9 @@
 #include <std_msgs/String.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Quaternion.h>
+#include <tf/transform_broadcaster.h>
 
 #define DEBUG
 typedef struct {
@@ -105,7 +108,9 @@ int main(int argc, char **argv){
     ros::NodeHandle rosNh_odom;
     ros::Subscriber Sub_left = rosNh_odom.subscribe("/left_wheel/rpm", 1, CallBack_left);
     ros::Subscriber Sub_right = rosNh_odom.subscribe("/right_wheel/rpm", 1, CallBack_right);
-    ros::Publisher Pub_pos = rosNh_odom.advertise<geometry_msgs::Point>("/car_position", 1);
+    // ros::Publisher Pub_pos = rosNh_odom.advertise<geometry_msgs::Point>("/odom", 1);
+    ros::Publisher Pub_pos = rosNh_odom.advertise<nav_msgs::Odometry>("/odom", 1);
+    tf::TransformBroadcaster odom_broadcaster;
 
     while (ros::ok()){
         CalculatePosition(&angularvel, &position);
@@ -116,6 +121,43 @@ int main(int argc, char **argv){
         Pub_pos.publish(msg);
         ros::spinOnce();
     }
+    while (ros::ok()) {
+        CalculatePosition(&angularvel, &position);
+
+        nav_msgs::Odometry odom;
+        odom.header.stamp = ros::Time::now();
+        odom.header.frame_id = "odom";
+        odom.child_frame_id = "base_link";  // child frame id
+
+        odom.pose.pose.position.x = position.x;
+        odom.pose.pose.position.y = position.y;
+        odom.pose.pose.position.z = 0.0;
+
+        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(position.theta);
+        odom.pose.pose.orientation = odom_quat;
+
+        odom.twist.twist.linear.x = 0.0;
+        odom.twist.twist.linear.y = 0.0;
+        odom.twist.twist.angular.z = 0.0;
+
+        Pub_pos.publish(odom);
+
+        // Broadcast transform from odom to base_link
+        geometry_msgs::TransformStamped odom_trans;
+        odom_trans.header.stamp = ros::Time::now();
+        odom_trans.header.frame_id = "odom";
+        odom_trans.child_frame_id = "base_link";
+
+        odom_trans.transform.translation.x = position.x;
+        odom_trans.transform.translation.y = position.y;
+        odom_trans.transform.translation.z = 0.0;
+        odom_trans.transform.rotation = odom_quat;
+
+        odom_broadcaster.sendTransform(odom_trans);
+
+        ros::spinOnce();
+    }
+
 
     return 0;
 }
