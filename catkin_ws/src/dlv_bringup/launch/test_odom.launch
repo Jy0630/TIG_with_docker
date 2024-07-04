@@ -1,0 +1,30 @@
+<launch>
+
+  <arg name="mapping_method" default="gmapping" />
+
+  <!-- Launch lidar -->
+  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" />
+
+  <!-- Teleop -->
+  <include file="$(find dlv_teleop)/launch/teleop.launch" />
+
+  <!-- Connect to the wheels -->
+  <include file="$(find dlv_plate_ctrl)/launch/bringup.launch" />
+  <!-- Launch description -->
+  <include file="$(find dlv_description)/launch/dlv_description.launch" />
+
+  <!-- Calculate Odom -->
+  <include file="$(find odom_two_wheel_chassis)/launch/odom.launch" />
+
+  <!-- Static Transform Publisher -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_laser_broadcaster" args="0 0 0 0 0 0 base_link laser" />
+
+  <!-- Mapping -->
+  <include file="$(find dlv_mln)/launch/mapping.launch" >
+    <arg name="method" value="$(arg mapping_method)" />
+  </include>
+
+  <!-- Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/gmapping.rviz" />
+
+</launch>
