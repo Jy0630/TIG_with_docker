@@ -1,0 +1,67 @@
+Panels:
+  - Class: rviz/Displays
+    Name: Displays
+  - Class: rviz/Views
+    Name: Views
+    Saved: {}
+  - Class: rviz/Time
+    Name: Time
+
+Displays:
+  - Class: rviz/Grid
+    Name: Grid
+    Value: true
+    Alpha: 0.5
+    Cell Size: 1
+    Color: 160; 160; 160
+    Height: 100
+    Line Style: Lines
+    Plane: XY
+    Reference Frame: <Fixed Frame>
+    Reference Position: 0; 0; 0
+    Show Axes: true
+    Show Coordinates: false
+    Show Reference Position: false
+    Show Status: true
+    Show Z Axis: false
+    Spacing: 5
+    Width: 100
+
+  - Class: rviz/Map
+    Name: Map
+    Topic: map
+    Alpha: 1.0
+    Color Scheme: map
+    Draw Behind: false
+    Draw Overlays: false
+    Line Style: Lines
+    Reference Frame: <Fixed Frame>
+    Show Grid: false
+    Show Status: true
+    Tile Size: 20
+
+  - Class: rviz/LaserScan
+    Name: LaserScan
+    Topic: /dlv/laser/scan
+    Alpha: 1
+    Autocompute Intensity Bounds: false
+    Buffer Length: 1
+    Color: 255; 0; 0
+    Decay Time: 0
+    Frame: laser
+    Size (m): 0.1
+    Style: Points
+    Use Fixed Frame: false
+
+Views:
+  - Class: rviz/TopDownOrtho
+    Name: TopDownOrtho
+    Reference Frame: <Fixed Frame>
+    View Angle: 0.7853981852531433
+
+Global Options:
+  Background Color: 48; 48; 48
+  Fixed Frame: map
+
+Marker Array:
+  Topics: [map_markers]

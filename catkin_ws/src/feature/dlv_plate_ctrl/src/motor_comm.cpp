@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     left_rpm_msg.data*=-1;
     rightRpmPub.publish(right_rpm_msg);
     leftRpmPub.publish(left_rpm_msg);
-    std::cout << "right wheel rpm = " << right_rpm_msg.data << " " << "left wheel rpm = " << left_rpm_msg.data << "\n";
+    // std::cout << "right wheel rpm = " << right_rpm_msg.data << " " << "left wheel rpm = " << left_rpm_msg.data << "\n";
     ros::spinOnce();
   }
 
@@ -78,8 +78,8 @@ void processMsg(carInfo *car_info)
   double wheel_radius = 0.075;
   double axis_length = 0.62;
 
-  double right_wheel_vel = -100 * (linear_x + angular_z * axis_length) / wheel_radius;
-  double left_wheel_vel = 100 * (linear_x  - angular_z * axis_length) / wheel_radius;
+  double right_wheel_vel = -50 * (linear_x + angular_z * axis_length) / wheel_radius;
+  double left_wheel_vel = 50 * (linear_x  - angular_z * axis_length) / wheel_radius;
 
   #ifdef DEBUG
   std::cout<<"---------------------"<<'\n';

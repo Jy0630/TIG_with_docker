@@ -3,14 +3,14 @@
   <arg name="method" default="gmapping" />
 
   <!-- Gmapping -->
-  <group ns="gmapping" if="$(eval method=='gmapping')">
-    <include file="$(find dlv_mln)/launch/include/gmapping.launch"/>
-  </group>
+  <!-- <group ns="gmapping" if="$(eval method=='gmapping')"> -->
+    <!-- <include file="$(find dlv_mln)/launch/include/gmapping.launch"/> -->
+  <!-- </group> -->
 
   <!-- Hector -->
-  <group ns="hector_mapping" if="$(eval method=='hector_mapping')">
-    <include file="$(find dlv_mln)/launch/include/hector_mapping.launch"/>
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/hector_mapping.rviz" />  
-  </group>
+  <!-- <group ns="hector_mapping" if="$(eval method=='hector_mapping')"> -->
+    <!-- <include file="$(find dlv_mln)/launch/include/hector_mapping.launch"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/hector_mapping.rviz" />   -->
+  <!-- </group> -->
   
 </launch>
