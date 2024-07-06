@@ -48,7 +48,7 @@ static uint8_t CRCLowTable[256] = {
 int serialPort;
 
 void serialInit(){
-    serialPort = open("/dev/ttyPlate", O_RDWR);
+    serialPort = open("/dev/plate", O_RDWR);
 
     if(serialPort < 0){
         printf("error %i from open : %s \n", errno, strerror(errno));

@@ -1,6 +1,6 @@
-.PHONY: setup-usb
+.PHONY: create_udev_rules delete_udev_rules
 
-all: setup-usb build run clean
+all: create_udev_rules build run clean delete_udev_rules
 
 build:
 	docker build -t ros-noetic-zsh:latest .
@@ -10,8 +10,8 @@ run:
 	-docker run -it \
 	    --privileged \
 		--env="DISPLAY" \
-		-v /dev/ttyUSB0:/dev/ttyPlate \
-		-v /dev/ttyUSB1:/dev/ttyRplidar_s2 \
+		-v /dev/plate:/dev/plate \
+		-v /dev/rplidar:/dev/rplidar \
 		-v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 		-e XDG_RUNTIME_DIR=/tmp \
 		-e QT_X11_NO_MITSHM=1 \
@@ -31,6 +31,19 @@ clean:
 attach:
 	-docker exec -it ros-noetic-zsh /bin/zsh
 
-setup-usb:
-	@chmod +x ./scripts/usb_setup.sh
-	@./scripts/usb_setup.sh
+create_udev_rules:
+	@echo "Remap the LIDAR serial port(ttyUSBX) to rplidar"
+	@echo "Rplidar usb connection as /dev/rplidar , check it using the command : ls -l /dev|grep ttyUSB"
+	@echo "Start copy rplidar.rules to /etc/udev/rules.d/"
+	@sudo cp ./scripts/rplidar.rules /etc/udev/rules.d
+	@echo " "
+	@echo "Remap the plate serial port(ttyUSBX) to plate"
+	@echo "Plate usb connection as /dev/plate , check it using the command : ls -l /dev|grep ttyUSB"
+	@echo "Start copy plate.rules to /etc/udev/rules.d/"
+	@sudo cp ./scripts/plate.rules /etc/udev/rules.d
+	@echo " "
+	@echo "Restarting udev"
+	@echo " "
+	@sudo udevadm control --reload-rules
+	@sudo udevadm trigger
+	@echo "Finish usb port setup"
