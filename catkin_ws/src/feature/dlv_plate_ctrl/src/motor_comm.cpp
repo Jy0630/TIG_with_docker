@@ -114,8 +114,10 @@ void processMsg(carInfo *car_info)
   car_info->right_wheel.data[5] = (0xff & int(right_wheel_vel));
   car_info->left_wheel.data[5] = (0xff & int(left_wheel_vel));
 
+  #ifdef DEBUG
   std::cout << "car_info->right_wheel.data[4] = " << (0xff & (int(right_wheel_vel) >> 8)) << "car_info->left_wheel.data[4] = " << (0xff & int(left_wheel_vel)) << "\n";
-
+  #endif
+  
   CRC16Generate(&car_info->right_wheel);
   CRC16Generate(&car_info->left_wheel);
   return;
