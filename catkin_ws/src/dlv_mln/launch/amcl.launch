@@ -63,4 +63,8 @@
 
   </node>
 
+    <!-- Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/amcl.rviz" 
+    if="$(arg rviz)"/>
+
 </launch>
