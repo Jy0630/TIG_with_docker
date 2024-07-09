@@ -1,6 +1,6 @@
 #include <motor_function.h>
 
-#define DEBUG
+// #define DEBUG
 
 static uint8_t CRCHighTable[256] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
@@ -48,7 +48,7 @@ static uint8_t CRCLowTable[256] = {
 int serialPort;
 
 void serialInit(){
-    serialPort = open("/dev/ttyPlate", O_RDWR);
+    serialPort = open("/dev/plate", O_RDWR);
 
     if(serialPort < 0){
         printf("error %i from open : %s \n", errno, strerror(errno));

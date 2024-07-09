@@ -12,8 +12,11 @@
 #include <std_msgs/String.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Quaternion.h>
+#include <tf/transform_broadcaster.h>
 
-#define DEBUG
+// #define DEBUG
 typedef struct {
     double v;
     double vx;  // x 方向速度
@@ -29,7 +32,7 @@ typedef struct {
 typedef struct {
     double x;
     double y;
-    double th;
+    double theta;
 } Position;
 
 AngularVel angularvel;
@@ -66,18 +69,18 @@ void CalculatePosition(AngularVel* angularvel, Position* position){
     if (motion.omega != 0) {
         // 車輛正在轉彎
         double radius = motion.v / motion.omega;   // 使用旋轉半徑計算
-        double delta_th = motion.omega * dt;
-        position->x += radius * (sin(position->th + delta_th) - sin(position->th));
-        position->y -= radius * (cos(position->th + delta_th) - cos(position->th)); // 注意，這裡需要減去而不是加上
+        double delta_theta = motion.omega * dt;
+        position->x += radius * (sin(position->theta + delta_theta) - sin(position->theta));
+        position->y -= radius * (cos(position->theta + delta_theta) - cos(position->theta)); // 注意，這裡需要減去而不是加上
     } else {
         // 車輛直行
         position->x += motion.vx * dt;
         position->y += motion.vy * dt;
     }
-    position->th += motion.omega * dt;
+    position->theta += motion.omega * dt;
 
     #ifdef DEBUG
-    std::cout << "x: " << position->x << ", y: " << position->y << ", theta (degrees): " << (position->th * 180 / M_PI) << "\n";
+    std::cout << "x: " << position->x << ", y: " << position->y << ", theta (degrees): " << (position->theta * 180 / M_PI) << "\n";
     #endif
 
     last_time = current_time;
@@ -90,8 +93,8 @@ MotionState CalculateMotion(AngularVel* angularvel, double R, double L, Position
     double v = (v_L + v_R) / 2;
     double omega = (v_R - v_L) / L;
 
-    double vx = v * cos(position->th);
-    double vy = v * sin(position->th);
+    double vx = v * cos(position->theta);
+    double vy = v * sin(position->theta);
 
     return {v, vx, vy, omega};
 }
@@ -99,23 +102,53 @@ MotionState CalculateMotion(AngularVel* angularvel, double R, double L, Position
 int main(int argc, char **argv){
     position.x = 0.0;
     position.y = 0.0;
-    position.th = 0.0;
+    position.theta = 0.0;
 
     ros::init(argc, argv, "Odom_Calc");
     ros::NodeHandle rosNh_odom;
     ros::Subscriber Sub_left = rosNh_odom.subscribe("/left_wheel/rpm", 1, CallBack_left);
     ros::Subscriber Sub_right = rosNh_odom.subscribe("/right_wheel/rpm", 1, CallBack_right);
-    ros::Publisher Pub_pos = rosNh_odom.advertise<geometry_msgs::Point>("/car_position", 1);
+    // ros::Publisher Pub_pos = rosNh_odom.advertise<geometry_msgs::Point>("/odom", 1);
+    ros::Publisher Pub_pos = rosNh_odom.advertise<nav_msgs::Odometry>("/odom", 1);
+    tf::TransformBroadcaster odom_broadcaster;
 
-    while (ros::ok()){
+    while (ros::ok()) {
         CalculatePosition(&angularvel, &position);
-        geometry_msgs::Point msg;
-        msg.x = position.x;
-        msg.y = position.y;
-        msg.z = position.th;
-        Pub_pos.publish(msg);
+
+        nav_msgs::Odometry odom;
+        odom.header.stamp = ros::Time::now();
+        odom.header.frame_id = "odom";
+        odom.child_frame_id = "base_footprint";  // child frame id
+
+        odom.pose.pose.position.x = position.x;
+        odom.pose.pose.position.y = position.y;
+        odom.pose.pose.position.z = 0.0;
+
+        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(position.theta);
+        odom.pose.pose.orientation = odom_quat;
+
+        odom.twist.twist.linear.x = 0.0;
+        odom.twist.twist.linear.y = 0.0;
+        odom.twist.twist.angular.z = 0.0;
+
+        Pub_pos.publish(odom);
+
+        // Broadcast transform from odom to base_link
+        geometry_msgs::TransformStamped odom_trans;
+        odom_trans.header.stamp = ros::Time::now();
+        odom_trans.header.frame_id = "odom";
+        odom_trans.child_frame_id = "base_footprint";
+
+        odom_trans.transform.translation.x = position.x;
+        odom_trans.transform.translation.y = position.y;
+        odom_trans.transform.translation.z = 0.0;
+        odom_trans.transform.rotation = odom_quat;
+
+        odom_broadcaster.sendTransform(odom_trans);
+
         ros::spinOnce();
     }
+
 
     return 0;
 }

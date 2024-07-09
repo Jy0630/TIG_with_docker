@@ -1,0 +1,23 @@
+<launch>
+
+  <!-- TF broadcaster for base_footprint to laser -->
+  <node pkg="tf" type="static_transform_publisher" name="odom_to_base_footprint" args="0 0 0 0 0 0 /odom /base_footprint 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" />
+  <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
+  
+  <!-- Synchronizing the system's time with the recorded data's time. -->
+  <param name="/use_sim_time" value="true"/> 
+
+  <!-- Bag file -->
+  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/2024-07-05-09-51-03.bag" />
+
+  <!-- Hector Mapping -->
+  <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping" launch-prefix="bash -c 'sleep 3; exec $0 $@'">
+    <rosparam file="$(find dlv_mln)/config/hector_mapping_params.yaml" command="load" />
+  </node>
+
+  <!-- Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/mapping.rviz" />
+
+</launch>

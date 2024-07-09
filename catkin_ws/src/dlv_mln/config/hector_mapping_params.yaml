@@ -1,0 +1,67 @@
+# ---------------------------- Frame name settings --------------------------- #
+
+map_frame: "map"
+odom_frame: "odom"
+base_frame: "base_link"
+laser_frame: "laser"
+scan_topic: "scan"
+
+# -------------------------------- TF settings ------------------------------- #
+
+# whether to use a transformation on the scan data.
+use_tf_scan_transformation: true
+
+# whether to use a transformation on the start pose estimate.
+use_tf_pose_start_estimate: false
+
+# whether to use a transformation on the map.
+use_tf_map_transformation: true
+
+# ---------------------------- Map basic settings ---------------------------- #
+
+# The map resolution in meters/cell.
+map_resolution: 0.05
+
+# The map size in meters.
+map_size: [30.0, 30.0]
+
+# The map origin in meters.
+map_origin: [0.0, 0.0]
+
+# The number of multi-resolution grid map levels.
+map_multi_res_levels: 2
+
+# ---------------------------- Map update settings --------------------------- #
+
+# The update factor for free (unoccupied) space in the map, 
+# influencing how quickly free space is updated.
+update_factor_free: 0.4
+
+# The update factor for occupied space in the map, 
+# influencing how quickly occupied space is updated.
+update_factor_occupied: 0.9
+
+# The minimum distance (meters) that needs to be traveled before the map is updated.
+map_update_distance_thresh: 0.4
+
+# The minimum change (radians) in orientation before the map is updated.
+map_update_angle_thresh: 0.06
+
+# ------------------------------ Laser settings ------------------------------ #
+
+# The minimum and maximum range of the laser scanner.
+laser_min_dist: 0.4
+laser_max_dist: 30.0
+
+# Filters laser scan points based on their Z value
+laser_z_min_value: -1.0
+laser_z_max_value: 1.0
+
+# ------------------------------ Other settings ------------------------------ #
+
+# Whether to allow other nodes to request the map.
+advertise_map_service: true
+
+# The size of the queue for the scan subscriber.
+# Set to 1, meaning the subscriber will process one message at a time.
+scan_subscriber_queue_size: 5

@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     left_rpm_msg.data*=-1;
     rightRpmPub.publish(right_rpm_msg);
     leftRpmPub.publish(left_rpm_msg);
-    std::cout << "right wheel rpm = " << right_rpm_msg.data << " " << "left wheel rpm = " << left_rpm_msg.data << "\n";
+    // std::cout << "right wheel rpm = " << right_rpm_msg.data << " " << "left wheel rpm = " << left_rpm_msg.data << "\n";
     ros::spinOnce();
   }
 
@@ -78,8 +78,8 @@ void processMsg(carInfo *car_info)
   double wheel_radius = 0.075;
   double axis_length = 0.62;
 
-  double right_wheel_vel = -100 * (linear_x + angular_z * axis_length) / wheel_radius;
-  double left_wheel_vel = 100 * (linear_x  - angular_z * axis_length) / wheel_radius;
+  double right_wheel_vel = -50 * (linear_x + angular_z * axis_length) / wheel_radius;
+  double left_wheel_vel = 50 * (linear_x  - angular_z * axis_length) / wheel_radius;
 
   #ifdef DEBUG
   std::cout<<"---------------------"<<'\n';
@@ -114,8 +114,10 @@ void processMsg(carInfo *car_info)
   car_info->right_wheel.data[5] = (0xff & int(right_wheel_vel));
   car_info->left_wheel.data[5] = (0xff & int(left_wheel_vel));
 
+  #ifdef DEBUG
   std::cout << "car_info->right_wheel.data[4] = " << (0xff & (int(right_wheel_vel) >> 8)) << "car_info->left_wheel.data[4] = " << (0xff & int(left_wheel_vel)) << "\n";
-
+  #endif
+  
   CRC16Generate(&car_info->right_wheel);
   CRC16Generate(&car_info->left_wheel);
   return;

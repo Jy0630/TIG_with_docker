@@ -66,7 +66,7 @@ class ObjectDetectionPublisher:
 
 if __name__ == '__main__':
     rospy.init_node('object_detection_publisher', anonymous=True)
-    #camera_id = 0
+    #camera_id = 5
     camera_id = rospy.get_param('~camera_id', '')
     yolo_model = rospy.get_param('~yolo_model', '')
     detection_publisher = ObjectDetectionPublisher(camera_id, yolo_model)

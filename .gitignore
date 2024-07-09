@@ -1,3 +1,5 @@
 .vscode
 catkin_ws/build
 catkin_ws/devel
+__pycache__/
+catkin_ws/src/dlv_teleop/rosboard/html/js/local_ip.js
