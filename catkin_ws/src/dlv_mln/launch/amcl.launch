@@ -1,10 +1,13 @@
 <launch>
   <arg name="sim" default="false" />
-  <arg name="map_file" default="$(find dlv_mln)/maps/itron_basement.yaml" unless="$(arg sim)"/>
+  <arg name="map_file" default="$(find dlv_mln)/maps/28_TDK_test_map.yaml" unless="$(arg sim)"/>
   <arg name="map_file" default="$(find dlv_mln)/maps/27_TDK_map.yaml" if="$(arg sim)"/>
 
   <arg name="use_map_topic"   default="true" />
-  <arg name="scan_topic"      default="/dlv/laser/scan" />
+
+
+  <!-- <arg name="scan_topic"      default="/dlv/laser/scan" /> -->
+  <arg name="scan_topic"      default="scan" />
   <arg name="odom_frame_id"   default="odom"/>
   <arg name="base_frame_id"   default="footprint"/>
   <arg name="global_frame_id" default="map"/>

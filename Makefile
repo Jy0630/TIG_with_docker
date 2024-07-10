@@ -10,12 +10,13 @@ run:
 	-docker run -it \
 	    --privileged \
 		--env="DISPLAY" \
-		-v /dev/ttyUSB0:/dev/ttyUSB0 \
-		-v /dev/video0:/dev/video0 \
-		-v /dev/ttyPlate:/dev/ttyPlate \
-		-v /dev/ttyRplidar_s2:/dev/ttyRplidar_s2 \
-		-v /dev/plate:/dev/plate \
-		-v /dev/rplidar:/dev/rplidar \
+		--device /dev/ttyUSB0:/dev/ttyRplidar_s2 \
+		--device /dev/ttyUSB1:/dev/ttyPlate \
+		--device /dev/video0:/dev/video0 \
+		--device /dev/ttyPlate:/dev/ttyPlate \
+		--device /dev/rplidar:/dev/rplidar \
+		--device /dev/ttyRplidar_s2:/dev/ttyRplidar_s2 \
+		--device /dev/plate:/dev/plate \
 		-v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 		-e XDG_RUNTIME_DIR=/tmp \
 		-e QT_X11_NO_MITSHM=1 \
