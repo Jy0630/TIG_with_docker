@@ -4,10 +4,10 @@
 
 # ---------------------------- Frame name settings --------------------------- #
 
-global_frame_id: map
-odom_frame_id: odom
-base_frame_id: base_link
-scan_topic: scan
+global_frame_id: "map"
+odom_frame_id: "odom"
+base_frame_id: "base_link"
+scan_topic: "scan"
 
 # ------------------------------ Basic settings ------------------------------ #
 
@@ -68,7 +68,7 @@ tf_broadcast: true
 
 # ---------------------------- Frame name settings --------------------------- #
 
-map_frame: "hector_map"
+map_frame: "map"
 odom_frame: "odom"
 base_frame: "base_link"
 laser_frame: "laser"

@@ -171,7 +171,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /hector_map
+      Topic: /map
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -203,7 +203,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 17.026386260986328
+      Distance: 19.494415283203125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -211,8 +211,8 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.3184654712677002
-        Y: -1.7818622589111328
+        X: 1.0455436706542969
+        Y: -4.256261825561523
         Z: -2.0765760382346343e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
@@ -239,5 +239,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 507
+  X: 506
   Y: 433
