@@ -1,0 +1,45 @@
+<launch>
+  <arg name="map_file" default="$(find dlv_mln)/maps/28_TDK_test_map.yaml" />
+  <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
+  <arg name="odom_method" default="hector" /> <!-- calc, hector -->
+
+  <!-- TF broadcaster for base_footprint to laser -->
+  <node pkg="tf" type="static_transform_publisher" name="odom_to_base_footprint" args="0 0 0 0 0 0 /odom /base_footprint 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" />
+  <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
+  
+  <!-- Load parameters -->
+  <rosparam file="$(find dlv_mln)/config/amcl_params.yaml" command="load" />
+
+  <!-- Scan method: scan -->
+  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" 
+    if="$(eval arg('scan_method') == 'scan')" />
+
+  <!-- Scan method: bag -->
+  <param name="/use_sim_time" value="true" 
+    if="$(eval arg('scan_method') == 'bag')"/>
+
+  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/2024-07-05-09-51-03.bag" 
+    if="$(eval arg('scan_method') == 'bag')"/>
+
+  <!-- Odom method: calc -->
+  <include file="$(find odom_two_wheel_chassis)/launch/odom.launch" 
+    if="$(eval arg('odom_method') == 'calc')" />
+  
+  <!-- Odom method: hector -->
+  <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping"
+    if="$(eval arg('odom_method') == 'hector')" >
+    <remap from="/map" to="/hector_map"/>
+  </node>
+
+  <!-- Map server -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+  <!-- AMCL -->
+  <node pkg="amcl" type="amcl" name="amcl" />
+
+  <!-- Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/amcl.rviz" />
+
+</launch>
