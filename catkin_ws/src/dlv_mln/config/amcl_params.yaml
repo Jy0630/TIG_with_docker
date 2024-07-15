@@ -11,9 +11,9 @@ scan_topic: "scan"
 
 # ------------------------------ Basic settings ------------------------------ #
 
-use_map_topic: true
-initial_pose_x: -25.624998
-initial_pose_y: -25.624998
+use_map_topic: false
+initial_pose_x: 0
+initial_pose_y: 0
 initial_pose_a: 0
 
 # ------------------------------ Laser settings ------------------------------ #
@@ -32,11 +32,21 @@ laser_likelihood_max_dist: 2.0
 # -------------------------- Odometry model settings ------------------------- #
 
 odom_model_type: diff-corrected
-odom_alpha1: 0
-odom_alpha2: 0
-odom_alpha3: 0
-odom_alpha4: 0
-odom_alpha5: 0.1
+
+# Expected process noise in odometry's rotation estimate from rotation.
+odom_alpha1: 0.2
+
+# Expected process noise in odometry's rotation estimate from translation.
+odom_alpha2: 0.2
+
+# Expected process noise in odometry's translation estimate from translation.
+odom_alpha3: 0.2
+
+# Expected process noise in odometry's translation estimate from rotation.
+odom_alpha4: 0.2
+
+# For Omni models only: translation noise.
+odom_alpha5: 0  
 
 # ------------------------ Particle Filter Parameters ------------------------ #
 
@@ -68,7 +78,7 @@ tf_broadcast: true
 
 # ---------------------------- Frame name settings --------------------------- #
 
-map_frame: "map"
+map_frame: "hector_map"
 odom_frame: "odom"
 base_frame: "base_link"
 laser_frame: "laser"
@@ -81,6 +91,8 @@ pub_map_odom_transform: false
 
 # To provide the odometry data using the Hector mapping package instead of using the data from plate.
 pub_odometry: true
+
+pub_map_scanmatch_transform: false
 
 # whether to use a transformation on the scan data.
 use_tf_scan_transformation: true
