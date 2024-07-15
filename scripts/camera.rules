@@ -1,0 +1,2 @@
+# Set the udev rule to fix the device port for Logitech Webcam C310
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="081b", MODE:="0777", SYMLINK+="camera"

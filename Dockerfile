@@ -128,8 +128,10 @@ RUN apt-get install ros-noetic-rqt-tf-tree -y
 # Install robot state publisher
 RUN apt-get install ros-noetic-robot-state-publisher -y
 
-
 WORKDIR /root/catkin_ws
+
+# Copy .rules files from the host into the Docker image
+COPY scripts/*.rules /root/scripts/
 
 # Entry point
 COPY scripts/entrypoint.sh /root/scripts/entrypoint.sh
