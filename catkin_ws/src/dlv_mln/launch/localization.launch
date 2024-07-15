@@ -4,13 +4,17 @@
   <arg name="odom_method" default="hector" /> <!-- calc, hector -->
 
   <!-- TF broadcaster for base_footprint to laser -->
-  <node pkg="tf" type="static_transform_publisher" name="odom_to_base_footprint" args="0 0 0 0 0 0 /odom /base_footprint 50"/>
+  <node pkg="dlv_mln" name="odom_to_base_tf_broadcaster" type="odom_to_base_tf_broadcaster.py"  output="screen" />
+  <!-- <node pkg="tf" type="static_transform_publisher" name="odom_to_base_footprint" args="0 0 0 0 0 0 /odom /base_footprint 50"/> -->
   <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
   <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" />
   <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
   
   <!-- Load parameters -->
   <!-- <rosparam file="$(find dlv_mln)/config/amcl_params.yaml" command="load" /> -->
+
+  <!-- Map server -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
   <!-- Scan method: scan -->
   <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" 
@@ -43,10 +47,7 @@
     <param name="scan_subscriber_queue_size" value="5"/>
     <param name="scan_topic" value="/scan"/>
     <param name="pub_map_scanmatch_transform" value="false" />
-  </node>     
-
-  <!-- Map server -->
-  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+  </node>
 
   <!-- AMCL -->
   <node pkg="amcl" type="amcl" name="amcl" >
