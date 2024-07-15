@@ -1,0 +1,153 @@
+# ---------------------------------------------------------------------------- #
+#                                     AMCL                                     #
+# ---------------------------------------------------------------------------- #
+
+# ---------------------------- Frame name settings --------------------------- #
+
+global_frame_id: "map"
+odom_frame_id: "odom"
+base_frame_id: "base_link"
+scan_topic: "scan"
+
+# ------------------------------ Basic settings ------------------------------ #
+
+use_map_topic: false
+initial_pose_x: 0
+initial_pose_y: 0
+initial_pose_a: 0
+
+# ------------------------------ Laser settings ------------------------------ #
+
+laser_model_type: likelihood_field
+laser_max_beams: 60
+laser_max_range: 12.0
+laser_z_hit: 0.5
+laser_z_short: 0.05
+laser_z_max: 0.05
+laser_z_rand: 0.5
+laser_sigma_hit: 0.2
+laser_lambda_short: 0.1
+laser_likelihood_max_dist: 2.0
+
+# -------------------------- Odometry model settings ------------------------- #
+
+odom_model_type: diff-corrected
+
+# Expected process noise in odometry's rotation estimate from rotation.
+odom_alpha1: 0.2
+
+# Expected process noise in odometry's rotation estimate from translation.
+odom_alpha2: 0.2
+
+# Expected process noise in odometry's translation estimate from translation.
+odom_alpha3: 0.2
+
+# Expected process noise in odometry's translation estimate from rotation.
+odom_alpha4: 0.2
+
+# For Omni models only: translation noise.
+odom_alpha5: 0  
+
+# ------------------------ Particle Filter Parameters ------------------------ #
+
+min_particles: 500
+max_particles: 2000
+kld_err: 0.05
+kld_z: 0.99
+
+# --------------------- Update and Resampling Parameters --------------------- #
+
+update_min_d: 0.25
+update_min_a: 0.2
+resample_interval: 1
+
+# ------------------------------ Other settings ------------------------------ #
+
+gui_publish_rate: 10.0
+recovery_alpha_slow: 0.0
+recovery_alpha_fast: 0.0
+transform_tolerance: 0.1
+tf_broadcast: true
+
+# ---------------------------------------------------------------------------- #
+#                                Hector mapping                                #
+# ---------------------------------------------------------------------------- #
+
+# In dlv_mln/launch/localization.launch, `odom_method` could be set to either `amcl` or `hector`.
+# If `hector` is used, the following parameters are used to configure Hector mapping.
+
+# ---------------------------- Frame name settings --------------------------- #
+
+map_frame: "hector_map"
+odom_frame: "odom"
+base_frame: "base_link"
+laser_frame: "laser"
+scan_topic: "scan"
+
+# -------------------------------- TF settings ------------------------------- #
+
+# This will be published by amcl.
+pub_map_odom_transform: false
+
+# To provide the odometry data using the Hector mapping package instead of using the data from plate.
+pub_odometry: true
+
+pub_map_scanmatch_transform: false
+
+# whether to use a transformation on the scan data.
+use_tf_scan_transformation: true
+
+# whether to use a transformation on the start pose estimate.
+use_tf_pose_start_estimate: false
+
+# whether to use a transformation on the map.
+use_tf_map_transformation: true
+
+# ---------------------------- Map basic settings ---------------------------- #
+
+# The map resolution in meters/cell.
+map_resolution: 0.04
+
+# The map size in meters.
+map_size: [30.0, 30.0]
+
+# The map origin in meters.
+map_origin: [0.0, 0.0]
+
+# The number of multi-resolution grid map levels.
+map_multi_res_levels: 2
+
+# ---------------------------- Map update settings --------------------------- #
+
+# The update factor for free (unoccupied) space in the map, 
+# influencing how quickly free space is updated.
+update_factor_free: 0.4
+
+# The update factor for occupied space in the map, 
+# influencing how quickly occupied space is updated.
+update_factor_occupied: 0.9
+
+# The minimum distance (meters) that needs to be traveled before the map is updated.
+map_update_distance_thresh: 0.4
+
+# The minimum change (radians) in orientation before the map is updated.
+map_update_angle_thresh: 0.06
+
+# ------------------------------ Laser settings ------------------------------ #
+
+# The minimum and maximum range of the laser scanner.
+laser_min_dist: 0.4
+laser_max_dist: 30.0
+
+# Filters laser scan points based on their Z value
+laser_z_min_value: -1.0
+laser_z_max_value: 1.0
+
+# ------------------------------ Other settings ------------------------------ #
+
+# Whether to allow other nodes to request the map.
+advertise_map_service: true
+
+# The size of the queue for the scan subscriber.
+# Set to 1, meaning the subscriber will process one message at a time.
+scan_subscriber_queue_size: 5
