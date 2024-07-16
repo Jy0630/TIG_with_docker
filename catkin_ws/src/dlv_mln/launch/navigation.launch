@@ -1,13 +1,8 @@
 <launch>
 
-    <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
+    <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
     <arg name="odom_method" default="hector" /> <!-- calc, hector -->
-
-		<!-- Params -->
-		<arg name="x" default="0.3"/>
-		<arg name="y" default="2.4"/>
-		<arg name="yaw" default="1.5708"/>
-    <arg name="rviz" default="true"/>
+    <arg name="rviz" default="true" />
 
     <!--- AMCL -->
     <include file="$(find dlv_mln)/launch/localization.launch" >
