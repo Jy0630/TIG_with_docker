@@ -3,7 +3,7 @@
     <!-- Methods setting -->
     <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
     <arg name="odom_method" default="hector" /> <!-- calc, hector -->
-    <arg name="local_planner_method" default="base" />
+    <arg name="local_planner_method" default="base" /> <!-- base, dwa -->
 
     <!-- Rviz setting -->
     <arg name="rviz" default="nav" /> <!-- nav, loc, none -->

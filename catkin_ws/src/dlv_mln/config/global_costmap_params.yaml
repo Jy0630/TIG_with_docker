@@ -3,21 +3,10 @@
 # ---------------------------------------------------------------------------- #
 
 global_costmap:
-
-  # Frames
   global_frame: map
-  robot_base_frame: base_footprint
-
-  # Frequency
-  update_frequency: 0.3
-  publish_frequency: 0.3
-
-  # Rolling window
   rolling_window: false
-
-  # TF timeout
-  transform_tolerance: 0.5
-
+  track_unknown_space: true
+  
   plugins:
     - {name: static_layer, type: "costmap_2d::StaticLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
