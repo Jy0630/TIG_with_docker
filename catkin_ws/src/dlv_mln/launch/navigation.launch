@@ -13,6 +13,9 @@
     <!-- Move Base -->
     <include file="$(find dlv_mln)/launch/move_base.launch" />
 
+    <!-- Set TF Buffer duration -->
+    <!-- <param name="/tf_buffer_duration" value="10.0"/> -->
+
     <!-- Rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/move_base.rviz" 
       if="$(arg rviz)"/>

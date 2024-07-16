@@ -65,3 +65,4 @@ advertise_map_service: true
 # The size of the queue for the scan subscriber.
 # Set to 1, meaning the subscriber will process one message at a time.
 scan_subscriber_queue_size: 5
+

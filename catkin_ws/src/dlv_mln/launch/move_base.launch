@@ -14,5 +14,4 @@
         <remap from="/cmd_vel" to="$(arg cmd_vel_topic)"/>
         <remap from="odom" to="$(arg odom_topic)"/>
     </node>
-
 </launch> 
