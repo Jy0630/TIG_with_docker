@@ -1,7 +1,8 @@
 <launch>
   <arg name="map_file" default="$(find dlv_mln)/maps/28_TDK_test_map.yaml" />
-  <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
+  <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
   <arg name="odom_method" default="hector" /> <!-- calc, hector -->
+  <arg name="rviz" default="true" />
 
   <!-- TF broadcaster for base_footprint to laser -->
   <node pkg="dlv_mln" name="odom_to_base_tf_broadcaster" type="odom_to_base_tf_broadcaster.py"  output="screen" />
@@ -43,6 +44,7 @@
   </node>
 
   <!-- Rviz -->
-  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/amcl.rviz" /> -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/amcl.rviz" 
+    if="$(arg rviz)"/>
 
 </launch>
