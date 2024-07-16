@@ -17,13 +17,16 @@
 
     <!-- Move Base -->
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+      <remap from="/cmd_vel" to="/dlv/cmd_vel"/>
+      
+      <rosparam file="$(find dlv_mln)/config/$(arg local_planner_method)_local_planner_params.yaml" command="load" />
+      
       <rosparam file="$(find dlv_mln)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
       <rosparam file="$(find dlv_mln)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      
       <rosparam file="$(find dlv_mln)/config/local_costmap_params.yaml" command="load" />
       <rosparam file="$(find dlv_mln)/config/global_costmap_params.yaml" command="load" />
-      <rosparam file="$(find dlv_mln)/config/$(arg local_planner_method)_local_planner_params.yaml" command="load" />
-      <rosparam file="$(find dlv_mln)/config/move_base_params.yaml" command="load" />
-      <remap from="/cmd_vel" to="/dlv/cmd_vel"/>
+
     </node>
 
     <!-- Set TF Buffer duration -->
