@@ -6,6 +6,15 @@ find_package(catkin REQUIRED)
 
 catkin_package()
 
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+catkin_install_python(PROGRAMS
+  src/odom_to_base_tf_broadcaster.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 find_package(roslaunch)
 
 foreach(dir config launch rviz config maps)
