@@ -29,9 +29,6 @@
     <!-- Set TF Buffer duration -->
     <!-- <param name="/tf_buffer_duration" value="10.0"/> -->
 
-    <!-- Set TF Buffer duration -->
-    <!-- <param name="/tf_buffer_duration" value="10.0"/> -->
-
     <!-- Rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/move_base.rviz" 
       if="$(eval arg('rviz') == 'nav')"/>

@@ -1,0 +1,16 @@
+<launch>
+
+  <!-- Methods setting -->
+  <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
+  <arg name="odom_method" default="hector" /> <!-- calc, hector -->
+
+  <!-- Connect to the wheels -->
+  <include file="$(find dlv_plate_ctrl)/launch/bringup.launch" />
+
+  <!-- Navigation -->
+  <include file="$(find dlv_mln)/launch/navigation.launch" >
+    <arg name="scan_method" value="$(arg scan_method)" />
+    <arg name="odom_method" value="$(arg odom_method)" />
+  </include>
+
+</launch>
