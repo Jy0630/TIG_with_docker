@@ -81,6 +81,20 @@ void processMsg(carInfo *car_info)
   double right_wheel_vel = -50 * (linear_x + angular_z * axis_length) / wheel_radius;
   double left_wheel_vel = 50 * (linear_x  - angular_z * axis_length) / wheel_radius;
 
+  if(right_wheel_vel > 300){
+    right_wheel_vel = 300;
+  }
+  else if(right_wheel_vel < -300){
+    right_wheel_vel = -300;
+  }
+
+  if(left_wheel_vel > 300){
+    left_wheel_vel = 300;
+  }
+  else if(left_wheel_vel < -300){
+    left_wheel_vel = -300;
+  }
+  
   #ifdef DEBUG
   std::cout<<"---------------------"<<'\n';
   std::cout<<"right_wheel_vel: "<<right_wheel_vel<<'\n';
