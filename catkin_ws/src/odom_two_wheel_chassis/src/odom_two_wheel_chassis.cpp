@@ -125,7 +125,16 @@ int main(int argc, char **argv){
         odom.pose.pose.position.z = 0.0;
 
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(position.theta);
+
+        //test
+        odom_quat.x *= 1;
+        odom_quat.y *= 1;
+        odom_quat.z *= -1;
+        odom_quat.w *= 1;
+
         odom.pose.pose.orientation = odom_quat;
+        //test
+        // odom.pose.pose.orientation = odom_quat;
 
         odom.twist.twist.linear.x = 0.0;
         odom.twist.twist.linear.y = 0.0;
@@ -139,8 +148,8 @@ int main(int argc, char **argv){
         odom_trans.header.frame_id = "odom";
         odom_trans.child_frame_id = "base_footprint";
 
-        odom_trans.transform.translation.x = position.x;
-        odom_trans.transform.translation.y = position.y;
+        odom_trans.transform.translation.x = position.x;//test
+        odom_trans.transform.translation.y = -position.y;//test
         odom_trans.transform.translation.z = 0.0;
         odom_trans.transform.rotation = odom_quat;
 
