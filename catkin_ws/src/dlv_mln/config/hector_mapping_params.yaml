@@ -45,7 +45,8 @@ update_factor_occupied: 0.9
 map_update_distance_thresh: 0.4
 
 # The minimum change (radians) in orientation before the map is updated.
-map_update_angle_thresh: 0.06
+# map_update_angle_thresh: 0.06
+map_update_angle_thresh: 0.12 #
 
 # ------------------------------ Laser settings ------------------------------ #
 

@@ -2,59 +2,73 @@
 #                         DWA local planner parameters                         #
 # ---------------------------------------------------------------------------- #
 
-base_global_planner: navfn/NavfnROS
+# base_global_planner: navfn/NavfnROS
+base_global_planner: global_planner/GlobalPlanner
 base_local_planner: dwa_local_planner/DWAPlannerROS
 
-controller_frequency: 5.0 # 發布速度指令的頻率
+controller_frequency: 5 # 發布速度指令的頻率
 controller_patience: 15.0 # 在停止之前允許的最大時間
 
-planner_frequency: 5.0
+planner_frequency: 1.0
 planner_patience: 15.0
 
 oscillation_timeout: 10 # 在執行recovery前允許的最大振動時長
-oscillation_distance: 0.3 # 允許來回振動的最小距離
+oscillation_distance: 0.03 # 允許來回振動的最小距離
 
-recovery_behavior_enabled: true
+recovery_behavior_enabled: false
 shutdown_costmaps: false # 在不活動狀態時是否關閉costmap
+
+GlobalPlanner:
+  allow_unknown: false # 是否允許未知區域
+  use_dijkstra: true # 是否使用dijkstra算法
+  use_quadratic: true # 是否使用二次插值
+  use_grid_path: false # 是否使用網格路徑
+  old_navfn_behavior: false # 是否使用舊的navfn行為
+  lethal_cost: 253 # 致命代價
+  neutral_cost: 50 # 中性代價
+  cost_factor: 3.0 # 代價因子
+  publish_potential: true # 是否發布潛在代價
+  orientation_mode: 1 # 方向模式
+  default_tolerance: 0.1 # 默認容忍度
 
 DWAPlannerROS:
 
   # Robot Configuration Parameters
-  max_vel_x: 1
+  max_vel_x: 2
   min_vel_x: -1
 
-  max_vel_y: 1
+  max_vel_y: 2
   min_vel_y: -1
 
   # The velocity when robot is moving in a straight line
   max_vel_trans:  3
-  min_vel_trans:  1
+  min_vel_trans:  0.5
 
-  max_vel_theta: 2.75
-  min_vel_theta: 1.37
+  max_vel_theta: 3
+  min_vel_theta: 1
 
-  acc_lim_x: 2.5
+  acc_lim_x: 2.5 
   acc_lim_y: 0.0
   acc_lim_theta: 3.2 
 
   # Goal Tolerance Parametes
   xy_goal_tolerance: 0.1
-  yaw_goal_tolerance: 0.5
-  latch_xy_goal_tolerance: false
+  yaw_goal_tolerance: 0.1
+  latch_xy_goal_tolerance: true
 
   # Forward Simulation Parameters
-  sim_time: 1.5
+  sim_time: 1.0
   vx_samples: 20
   vy_samples: 0
   vth_samples: 40
-  controller_frequency: 0.3
+  controller_frequency: 5
 
   # Trajectory Scoring Parameters
-  path_distance_bias: 0.01
-  goal_distance_bias: 0.01
-  occdist_scale: 10
+  path_distance_bias: 0.1
+  goal_distance_bias: 0.1
+  occdist_scale: 5
   forward_point_distance: 0.325
-  stop_time_buffer: 0.4
+  stop_time_buffer: 0.5
   scaling_speed: 0.25
   max_scaling_factor: 0.2
 

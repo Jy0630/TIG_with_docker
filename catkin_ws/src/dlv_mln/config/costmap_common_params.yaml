@@ -12,7 +12,7 @@ footprint_padding: 0.01
 robot_base_frame: base_footprint
 
 # Frequency
-update_frequency: 2
+update_frequency: 1.5
 publish_frequency: 1
 
 # TF timeout
@@ -44,9 +44,9 @@ obstacle_layer:
   mark_threshold: 0 # 標記區域的閥值
   combination_method: 1 
   track_unknown_space: true # Set true to avoid global path planning through unknown space
-  origin_z: 0.0
-  z_resolution: 0.2
-  z_voxels: 2
+  origin_z: 0.0 
+  z_resolution: 0.2 
+  z_voxels: 2 
   publish_voxel_map: false
 
 # ------------------------------ Inflation Layer ----------------------------- #

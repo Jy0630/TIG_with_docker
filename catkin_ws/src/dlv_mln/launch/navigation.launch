@@ -1,9 +1,9 @@
 <launch>
 
     <!-- Methods setting -->
-    <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
+    <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
     <arg name="odom_method" default="hector" /> <!-- calc, hector -->
-    <arg name="local_planner_method" default="base" /> <!-- base, dwa -->
+    <arg name="local_planner_method" default="dwa" /> <!-- base, dwa -->
 
     <!-- Rviz setting -->
     <arg name="rviz" default="nav" /> <!-- nav, loc, none -->
