@@ -22,6 +22,7 @@ target_link_libraries(two_wheel_odom_for_fusion ${catkin_LIBRARIES})
 
 catkin_install_python(PROGRAMS
   src/odom_to_base_tf_broadcaster.py
+  src/odom_to_base_tf_broadcaster_for_fusion.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

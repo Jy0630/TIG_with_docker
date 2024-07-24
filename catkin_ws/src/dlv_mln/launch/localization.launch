@@ -5,7 +5,6 @@
   <arg name="rviz" default="true" />
 
   <!-- TF broadcaster for base_footprint to laser -->
-  <node pkg="dlv_mln" name="odom_to_base_tf_broadcaster" type="odom_to_base_tf_broadcaster.py"  output="screen" />
   <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
   <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" />
   <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
@@ -29,6 +28,9 @@
     if="$(eval arg('odom_method') == 'calc')" />
   
   <!-- Odom method: hector -->
+  <node pkg="dlv_mln" name="odom_to_base_tf_broadcaster" type="odom_to_base_tf_broadcaster.py"  output="screen"
+    if="$(eval arg('odom_method') == 'hector')" />
+
   <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping"
     if="$(eval arg('odom_method') == 'hector')" >
     <rosparam file="$(find dlv_mln)/config/hector_mapping_params.yaml" command="load" />
@@ -43,7 +45,7 @@
     if="$(eval arg('odom_method') == 'fusion')" >
     <rosparam file="$(find dlv_mln)/config/ekf.yaml" command="load" />
   </node>
-  
+
   <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping"
   if="$(eval arg('odom_method') == 'fusion')" >
     <rosparam file="$(find dlv_mln)/config/hector_mapping_params.yaml" command="load" />
