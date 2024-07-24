@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 2.8.3)
 
 project(dlv_mln)
 
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  std_msgs
+  geometry_msgs
+  nav_msgs
+  roscpp
+  rospy
+  tf      
+)
 
 catkin_package()
 
@@ -10,12 +17,13 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(two_wheel_odom_for_fusion src/two_wheel_odom_for_fusion.cpp)
+target_link_libraries(two_wheel_odom_for_fusion ${catkin_LIBRARIES})
+
 catkin_install_python(PROGRAMS
   src/odom_to_base_tf_broadcaster.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
-find_package(roslaunch)
 
 foreach(dir config launch rviz config maps)
 	install(DIRECTORY ${dir}/
