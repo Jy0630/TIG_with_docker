@@ -43,7 +43,7 @@ void CallBack_fr(const std_msgs::Float64::ConstPtr& Omega);
 void CallBack_rl(const std_msgs::Float64::ConstPtr& Omega);
 void CallBack_rr(const std_msgs::Float64::ConstPtr& Omega);
 void CalculatePosition(AngularVel* angularvel, Position* position);
-MotionState CalculateMotion(AngularVel* angularvel, double R, double L, Position* position, double dt);
+MotionState CalculateMotion(AngularVel* angularvel, double R, double Lx, double Ly, Position* position, double dt);
 
 void CallBack_fl(const std_msgs::Float64::ConstPtr& Omega){
     angularvel.omega_fl = Omega->data;
