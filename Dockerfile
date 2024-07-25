@@ -115,7 +115,6 @@ RUN pip install qrcode_terminal tornado
 # Install tmux
 RUN apt-get install tmux -y
 
-
 # Yolo visual package
 RUN pip install opencv-python-headless
 RUN pip install torch torchvision
@@ -127,6 +126,9 @@ RUN apt-get install ros-noetic-rqt-tf-tree -y
 
 # Install robot state publisher
 RUN apt-get install ros-noetic-robot-state-publisher -y
+
+# Install ros-noetic-robot-localization
+RUN apt-get install ros-noetic-robot-localization -y
 
 WORKDIR /root/catkin_ws
 

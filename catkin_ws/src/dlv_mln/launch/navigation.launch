@@ -1,20 +1,39 @@
 <launch>
 
+    <!-- Methods setting -->
     <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
     <arg name="odom_method" default="hector" /> <!-- calc, hector -->
-    <arg name="rviz" default="true" />
+    <arg name="local_planner_method" default="dwa" /> <!-- base, dwa -->
+
+    <!-- Rviz setting -->
+    <arg name="rviz" default="nav" /> <!-- nav, loc, none -->
 
     <!--- AMCL -->
     <include file="$(find dlv_mln)/launch/localization.launch" >
       <arg name="scan_method" value="$(arg scan_method)" />
       <arg name="odom_method" value="$(arg odom_method)" />
+      <arg name="rviz" default="false" unless="$(eval arg('rviz') == 'loc')"/>
 		</include>
 
     <!-- Move Base -->
-    <include file="$(find dlv_mln)/launch/move_base.launch" />
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+      <remap from="/cmd_vel" to="/dlv/cmd_vel"/>
+      
+      <rosparam file="$(find dlv_mln)/config/$(arg local_planner_method)_local_planner_params.yaml" command="load" />
+      
+      <rosparam file="$(find dlv_mln)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find dlv_mln)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      
+      <rosparam file="$(find dlv_mln)/config/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find dlv_mln)/config/global_costmap_params.yaml" command="load" />
+
+    </node>
+
+    <!-- Set TF Buffer duration -->
+    <!-- <param name="/tf_buffer_duration" value="10.0"/> -->
 
     <!-- Rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dlv_mln)/rviz/move_base.rviz" 
-      if="$(arg rviz)"/>
+      if="$(eval arg('rviz') == 'nav')"/>
 
 </launch> 

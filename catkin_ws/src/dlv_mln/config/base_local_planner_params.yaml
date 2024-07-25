@@ -1,38 +1,74 @@
-base_local_planner: base_local_planner/TrajectoryPlannerROS # 本地規劃器
-base_global_planner: navfn/NavfnROS # 全局規劃器
+# ---------------------------------------------------------------------------- #
+#                         Base local planner parameters                        #
+# ---------------------------------------------------------------------------- #
+
+# base_global_planner: navfn/NavfnROS
+base_global_planner: global_planner/GlobalPlanner
+base_local_planner: base_local_planner/TrajectoryPlannerROS
+
+GlobalPlanner:
+  allow_unknown: false # 是否允許未知區域
+  use_dijkstra: true # 是否使用dijkstra算法
+  use_quadratic: true # 是否使用二次插值
+  use_grid_path: false # 是否使用網格路徑
+  old_navfn_behavior: false # 是否使用舊的navfn行為
+  lethal_cost: 253 # 致命代價
+  neutral_cost: 50 # 中性代價
+  cost_factor: 3.0 # 代價因子
+  publish_potential: true # 是否發布潛在代價
+  orientation_mode: 1 # 方向模式
+  default_tolerance: 0.2 # 默認容忍度
+  # a_star: true
+
+controller_frequency: 1.25 # 發布速度指令的頻率 
+controller_patience: 15.0 # 在停止之前允許的最大時間
+
+planner_frequency: 1.25
+planner_patience: 15.0
+
+oscillation_timeout: 10 # 在執行recovery前允許的最大振動時長
+oscillation_distance: 0.03 # 允許來回振動的最小距離
+
+recovery_behavior_enabled: true
+shutdown_costmaps: false # 在不活動狀態時是否關閉costmap
+
+
+
 TrajectoryPlannerROS:
 
   max_vel_x: 5.0
   min_vel_x: -5.0
   max_vel_theta: 2.0
   min_vel_theta: -2.0
-  min_in_place_vel_theta: 1.0 # 旋轉時的最小速度
+  min_in_place_vel_theta: 1.35 # 旋轉時的最小速度 //0722test
 
+  max_rotational_vel: 1.0 # 最大角速度
   max_vel_trans:  5
   min_vel_trans:  -5
 
   # tolerance
-  yaw_goal_tolerance: 0.10
-  xy_goal_tolerance: 0.05
-  # latch_xy_goal_tolerance: true # 是否在到達目標後停止規劃
+  yaw_goal_tolerance: 0.1 # 角度容忍度 0.1弧度
+  xy_goal_tolerance: 0.1 # 位置容忍度
+  latch_xy_goal_tolerance: true # 是否在到達目標後停止規劃//0722
 
-  acc_lim_theta: 1.2
+  acc_lim_theta: 3.2
   acc_lim_x: 2
   acc_lim_y: 2
 
-  holonomic_robot: false
+  holonomic_robot: false 
 
-  sim_time: 1 # 模擬時間的限制 （找出一次最佳路徑）
+  sim_time: 1.5 # 模擬時間的限制 （找出一次最佳路徑）#0722test
   sim_granularity: 0.1 # 模擬的時間間隔
-  vx_samples: 300 # 線性速度的樣本數量
-  vtheta_samples: 300 # 角速度的樣本數量
+  vx_samples: 100 # 線性速度的樣本數量
+  vtheta_samples: 100 # 角速度的樣本數量 //0722test
 
   scaling_speed: 3
   max_scaling_factor: 3
 
   # Trajectory Scoring Parameters
   meter_scoring: true # 是否考慮移動距離 否則指根據代價進行規劃
-  path_distance_bias: 30 # 前瞻距離, 機器人在做出決策時所考慮的未來路徑段的距離
-  goal_distance_bias: 20 # 目標距離, 機器人在做出決策時所考慮的目標的距離
-  # occdist_scale: 0.9 # 障礙物的代價
-  # heading_lookahead: 0.6 # 頭部 前瞻的距離
+  path_distance_bias: 32 # 前瞻距離, 機器人在做出決策時所考慮的未來路徑段的距離
+  goal_distance_bias: 24 # 目標距離, 機器人在做出決策時所考慮的目標的距離
+  occdist_scale: 0.9 # 障礙物的代價
+  heading_lookahead: 0.6 # 頭部 前瞻的距離
+  

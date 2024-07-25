@@ -1,12 +1,13 @@
+# ---------------------------------------------------------------------------- #
+#                           Global costmap parameters                          #
+# ---------------------------------------------------------------------------- #
+
 global_costmap:
   global_frame: map
-  robot_base_frame: base_footprint
-  update_frequency: 0.1
-  publish_frequency: 0.1
-  static_map: true
-  transform_tolerance: 1
+  rolling_window: false
+  track_unknown_space: true
+  inflation_radius: 0.4
 
   plugins:
     - {name: static_layer, type: "costmap_2d::StaticLayer"}
-    - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}

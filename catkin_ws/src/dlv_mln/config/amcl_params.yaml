@@ -35,16 +35,19 @@ laser_likelihood_max_dist: 4.0
 odom_model_type: diff-corrected
 
 # Expected process noise in odometry's rotation estimate from rotation.
-odom_alpha1: 0.008
-
+# odom_alpha1: 0.008
+odom_alpha1: 0.05
 # Expected process noise in odometry's rotation estimate from translation.
-odom_alpha2: 0.04
+# odom_alpha2: 0.04
+odom_alpha2: 0.05
 
 # Expected process noise in odometry's translation estimate from translation.
+# odom_alpha3: 0.004
 odom_alpha3: 0.004
 
 # Expected process noise in odometry's translation estimate from rotation.
-odom_alpha4: 0.025
+# odom_alpha4: 0.025
+odom_alpha4: 0.05
 
 # For Omni models only: translation noise.
 odom_alpha5: 0  

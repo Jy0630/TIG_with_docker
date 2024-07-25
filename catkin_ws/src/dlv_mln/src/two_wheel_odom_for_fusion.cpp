@@ -108,8 +108,7 @@ int main(int argc, char **argv){
     ros::NodeHandle rosNh_odom;
     ros::Subscriber Sub_left = rosNh_odom.subscribe("/left_wheel/rpm", 1, CallBack_left);
     ros::Subscriber Sub_right = rosNh_odom.subscribe("/right_wheel/rpm", 1, CallBack_right);
-    // ros::Publisher Pub_pos = rosNh_odom.advertise<geometry_msgs::Point>("/odom", 1);
-    ros::Publisher Pub_pos = rosNh_odom.advertise<nav_msgs::Odometry>("/odom", 1);
+    ros::Publisher Pub_pos = rosNh_odom.advertise<nav_msgs::Odometry>("/wheel/odom", 1);
     tf::TransformBroadcaster odom_broadcaster;
 
     while (ros::ok()) {
