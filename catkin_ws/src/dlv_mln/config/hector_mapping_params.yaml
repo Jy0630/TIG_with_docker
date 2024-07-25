@@ -20,7 +20,7 @@ use_tf_map_transformation: true
 # ---------------------------- Map basic settings ---------------------------- #
 
 # The map resolution in meters/cell.
-map_resolution: 0.05
+map_resolution: 0.03
 
 # The map size in meters.
 map_size: [30.0, 30.0]
@@ -42,11 +42,10 @@ update_factor_free: 0.4
 update_factor_occupied: 0.9
 
 # The minimum distance (meters) that needs to be traveled before the map is updated.
-map_update_distance_thresh: 0.4
+map_update_distance_thresh: 0.1
 
 # The minimum change (radians) in orientation before the map is updated.
-# map_update_angle_thresh: 0.06
-map_update_angle_thresh: 0.12 #
+map_update_angle_thresh: 0.01
 
 # ------------------------------ Laser settings ------------------------------ #
 
