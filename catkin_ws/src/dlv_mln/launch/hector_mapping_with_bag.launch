@@ -10,7 +10,7 @@
   <param name="/use_sim_time" value="true"/> 
 
   <!-- Bag file -->
-  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/2024-07-05-09-51-03.bag" />
+  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/_2024-07-25-06-26-04.bag" />
 
   <!-- Hector Mapping -->
   <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping" launch-prefix="bash -c 'sleep 3; exec $0 $@'">
