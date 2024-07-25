@@ -1,7 +1,7 @@
 <launch>
   <arg name="map_file" default="$(find dlv_mln)/maps/28_TDK_test_map.yaml" />
   <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
-  <arg name="odom_method" default="fusion" /> <!-- calc, hector, fusion, mecanum -->
+  <arg name="odom_method" default="calc" /> <!-- calc, hector, fusion, mecanum -->
   <arg name="rviz" default="true" />
 
   <!-- TF broadcaster for base_footprint to laser -->
@@ -17,10 +17,10 @@
     if="$(eval arg('scan_method') == 'scan')" />
 
   <!-- Scan method: bag -->
-  <param name="/use_sim_time" value="true" 
+  <param name="/use_sim_time" value="true"
     if="$(eval arg('scan_method') == 'bag')"/>
 
-  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/2024-07-05-09-51-03.bag" 
+  <node name="bag" pkg="rosbag" type="play" args="--clock $(find dlv_bag)/src/_2024-07-25-06-26-04.bag" 
     if="$(eval arg('scan_method') == 'bag')"/>
 
   <!-- Odom method: calc -->
