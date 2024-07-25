@@ -13,7 +13,7 @@
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
   <!-- Scan method: scan -->
-  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch" 
+  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch"
     if="$(eval arg('scan_method') == 'scan')" />
 
   <!-- Scan method: bag -->
