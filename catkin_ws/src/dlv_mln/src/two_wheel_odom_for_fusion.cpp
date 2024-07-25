@@ -142,17 +142,17 @@ int main(int argc, char **argv){
         Pub_pos.publish(odom);
 
         // Broadcast transform from odom to base_link
-        geometry_msgs::TransformStamped odom_trans;
-        odom_trans.header.stamp = ros::Time::now();
-        odom_trans.header.frame_id = "odom";
-        odom_trans.child_frame_id = "base_footprint";
+        // geometry_msgs::TransformStamped odom_trans;
+        // odom_trans.header.stamp = ros::Time::now();
+        // odom_trans.header.frame_id = "odom";
+        // odom_trans.child_frame_id = "base_footprint";
 
-        odom_trans.transform.translation.x = position.x;//test
-        odom_trans.transform.translation.y = -position.y;//test
-        odom_trans.transform.translation.z = 0.0;
-        odom_trans.transform.rotation = odom_quat;
+        // odom_trans.transform.translation.x = position.x;//test
+        // odom_trans.transform.translation.y = -position.y;//test
+        // odom_trans.transform.translation.z = 0.0;
+        // odom_trans.transform.rotation = odom_quat;
 
-        odom_broadcaster.sendTransform(odom_trans);
+        // odom_broadcaster.sendTransform(odom_trans);
 
         ros::spinOnce();
     }
