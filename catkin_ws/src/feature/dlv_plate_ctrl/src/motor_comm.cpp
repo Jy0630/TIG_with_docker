@@ -94,7 +94,7 @@ void processMsg(carInfo *car_info)
   else if(left_wheel_vel < -300){
     left_wheel_vel = -300;
   }
-  
+
   #ifdef DEBUG
   std::cout<<"---------------------"<<'\n';
   std::cout<<"right_wheel_vel: "<<right_wheel_vel<<'\n';

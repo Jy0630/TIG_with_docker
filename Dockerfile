@@ -115,6 +115,7 @@ RUN pip install qrcode_terminal tornado
 # Install tmux
 RUN apt-get install tmux -y
 
+
 # Yolo visual package
 RUN pip install opencv-python-headless
 RUN pip install torch torchvision
