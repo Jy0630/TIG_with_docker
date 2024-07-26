@@ -23,10 +23,19 @@ typedef struct {
 typedef struct {
   serialData right_wheel;
   serialData left_wheel;
+  serialData front_right_wheel;
+  serialData front_left_wheel;
+  serialData rear_right_wheel;
+  serialData rear_left_wheel;
   double linear_x;
+  double linear_y;
   double angular_z;
   double left_rpm;
   double right_rpm;
+  double front_right_rpm;
+  double front_left_rpm;
+  double rear_right_rpm;
+  double rear_left_rpm;
 }carInfo;
 
 void serialInit();

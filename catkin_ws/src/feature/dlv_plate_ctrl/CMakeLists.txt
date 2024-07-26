@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(dlv_plate_ctrl)
 
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -27,3 +32,7 @@ target_link_libraries(motor_comm motor_tool_library ${catkin_LIBRARIES})
 add_executable(test_sub src/test_sub.cpp)
 add_dependencies(test_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(test_sub ${catkin_LIBRARIES})
+
+add_executable(four_wheeled_motor_comm src/four_wheeled_motor_comm.cpp)
+target_link_libraries(four_wheeled_motor_comm motor_tool_library ${catkin_LIBRARIES})
+add_dependencies(four_wheeled_motor_comm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

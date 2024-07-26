@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="dlv_plate_ctrl" name="four_wheeled_motor_comm" type="four_wheeled_motor_comm" output="screen">
+  </node>
+</launch>

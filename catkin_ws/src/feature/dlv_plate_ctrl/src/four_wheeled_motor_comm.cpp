@@ -22,19 +22,21 @@ void calcRpm(carInfo *car_info);
 
 carInfo car_info_;
 
+
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "motor_comm");
   ros::NodeHandle rosNh_sub;
   ros::Publisher frontRightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/front_right_wheel/rpm", 1);
   ros::Publisher frontLeftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/front_left_wheel/rpm", 1);
-  ros::Publisher backRightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/back_right_wheel/rpm", 1);
-  ros::Publisher backLeftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/back_left_wheel/rpm", 1);
+  ros::Publisher rearRightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/rear_right_wheel/rpm", 1);
+  ros::Publisher rearLeftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/rear_left_wheel/rpm", 1);
   ros::Subscriber velCmdSub = rosNh_sub.subscribe("/dlv/cmd_vel", 1, velCmdCallback);
   serialInit();
   initMsg(&car_info_);
   
-  std_msgs::Float64 front_right_rpm_msg, front_left_rpm_msg, back_right_rpm_msg, back_left_rpm_msg;
+  std_msgs::Float64 front_right_rpm_msg, front_left_rpm_msg, rear_right_rpm_msg, rear_left_rpm_msg;
   
   while (ros::ok())
   {
@@ -42,18 +44,18 @@ int main(int argc, char **argv)
     calcRpm(&car_info_);
     front_right_rpm_msg.data = car_info_.front_right_rpm;
     front_left_rpm_msg.data = car_info_.front_left_rpm;
-    back_right_rpm_msg.data = car_info_.back_right_rpm;
-    back_left_rpm_msg.data = car_info_.back_left_rpm;
+    rear_right_rpm_msg.data = car_info_.rear_right_rpm;
+    rear_left_rpm_msg.data = car_info_.rear_left_rpm;
 
     if (front_right_rpm_msg.data > 32767) front_right_rpm_msg.data -= 65536;
     if (front_left_rpm_msg.data > 32767) front_left_rpm_msg.data -= 65536;
-    if (back_right_rpm_msg.data > 32767) back_right_rpm_msg.data -= 65536;
-    if (back_left_rpm_msg.data > 32767) back_left_rpm_msg.data -= 65536;
+    if (rear_right_rpm_msg.data > 32767) rear_right_rpm_msg.data -= 65536;
+    if (rear_left_rpm_msg.data > 32767) rear_left_rpm_msg.data -= 65536;
 
     frontRightRpmPub.publish(front_right_rpm_msg);
     frontLeftRpmPub.publish(front_left_rpm_msg);
-    backRightRpmPub.publish(back_right_rpm_msg);
-    backLeftRpmPub.publish(back_left_rpm_msg);
+    rearRightRpmPub.publish(rear_right_rpm_msg);
+    rearLeftRpmPub.publish(rear_left_rpm_msg);
 
     ros::spinOnce();
   }
@@ -79,15 +81,15 @@ void processMsg(carInfo *car_info)
 
   double front_right_vel = (linear_x - linear_y - angular_z * axis_length) / wheel_radius;
   double front_left_vel = (linear_x + linear_y + angular_z * axis_length) / wheel_radius;
-  double back_right_vel = (linear_x + linear_y - angular_z * axis_length) / wheel_radius;
-  double back_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius;
+  double rear_right_vel = (linear_x + linear_y - angular_z * axis_length) / wheel_radius;
+  double rear_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius;
 
   double max_vel = 300.0;
 
   front_right_vel = std::clamp(front_right_vel, -max_vel, max_vel);
   front_left_vel = std::clamp(front_left_vel, -max_vel, max_vel);
-  back_right_vel = std::clamp(back_right_vel, -max_vel, max_vel);
-  back_left_vel = std::clamp(back_left_vel, -max_vel, max_vel);
+  rear_right_vel = std::clamp(rear_right_vel, -max_vel, max_vel);
+  rear_left_vel = std::clamp(rear_left_vel, -max_vel, max_vel);
 
   #ifdef DEBUG
   std::cout << "Front Right Wheel Velocity: " << front_right_vel << '\n';
@@ -100,43 +102,43 @@ void processMsg(carInfo *car_info)
 
   car_info->front_right_wheel.length = 8;
   car_info->front_left_wheel.length = 8;
-  car_info->back_right_wheel.length = 8;
-  car_info->back_left_wheel.length = 8;
+  car_info->rear_right_wheel.length = 8;
+  car_info->rear_left_wheel.length = 8;
 
   car_info->front_right_wheel.data[0] = 1;
   car_info->front_left_wheel.data[0] = 2;
-  car_info->back_right_wheel.data[0] = 3;
-  car_info->back_left_wheel.data[0] = 4;
+  car_info->rear_right_wheel.data[0] = 3;
+  car_info->rear_left_wheel.data[0] = 4;
 
   car_info->front_right_wheel.data[1] = 6;
   car_info->front_left_wheel.data[1] = 6;
-  car_info->back_right_wheel.data[1] = 6;
-  car_info->back_left_wheel.data[1] = 6;
+  car_info->rear_right_wheel.data[1] = 6;
+  car_info->rear_left_wheel.data[1] = 6;
 
   car_info->front_right_wheel.data[2] = 0;
   car_info->front_left_wheel.data[2] = 0;
-  car_info->back_right_wheel.data[2] = 0;
-  car_info->back_left_wheel.data[2] = 0;
+  car_info->rear_right_wheel.data[2] = 0;
+  car_info->rear_left_wheel.data[2] = 0;
 
   car_info->front_right_wheel.data[3] = 67;
   car_info->front_left_wheel.data[3] = 67;
-  car_info->back_right_wheel.data[3] = 67;
-  car_info->back_left_wheel.data[3] = 67;
+  car_info->rear_right_wheel.data[3] = 67;
+  car_info->rear_left_wheel.data[3] = 67;
 
   car_info->front_right_wheel.data[4] = (0xff & (int(front_right_vel) >> 8));
   car_info->front_left_wheel.data[4] = (0xff & (int(front_left_vel) >> 8));
-  car_info->back_right_wheel.data[4] = (0xff & (int(back_right_vel) >> 8));
-  car_info->back_left_wheel.data[4] = (0xff & (int(back_left_vel) >> 8));
+  car_info->rear_right_wheel.data[4] = (0xff & (int(rear_right_vel) >> 8));
+  car_info->rear_left_wheel.data[4] = (0xff & (int(rear_left_vel) >> 8));
 
   car_info->front_right_wheel.data[5] = (0xff & int(front_right_vel));
   car_info->front_left_wheel.data[5] = (0xff & int(front_left_vel));
-  car_info->back_right_wheel.data[5] = (0xff & int(back_right_vel));
-  car_info->back_left_wheel.data[5] = (0xff & int(back_left_vel));
+  car_info->rear_right_wheel.data[5] = (0xff & int(rear_right_vel));
+  car_info->rear_left_wheel.data[5] = (0xff & int(rear_left_vel));
 
   CRC16Generate(&car_info->front_right_wheel);
   CRC16Generate(&car_info->front_left_wheel);
-  CRC16Generate(&car_info->back_right_wheel);
-  CRC16Generate(&car_info->back_left_wheel);
+  CRC16Generate(&car_info->rear_right_wheel);
+  CRC16Generate(&car_info->rear_left_wheel);
 }
 
 void sendMsg(carInfo *car_info)
@@ -145,10 +147,10 @@ void sendMsg(carInfo *car_info)
   receiveData(&car_info->front_right_wheel);
   transmitData(&car_info->front_left_wheel);
   receiveData(&car_info->front_left_wheel);
-  transmitData(&car_info->back_right_wheel);
-  receiveData(&car_info->back_right_wheel);
-  transmitData(&car_info->back_left_wheel);
-  receiveData(&car_info->back_left_wheel);
+  transmitData(&car_info->rear_right_wheel);
+  receiveData(&car_info->rear_right_wheel);
+  transmitData(&car_info->rear_left_wheel);
+  receiveData(&car_info->rear_left_wheel);
 }
 
 void initMsg(carInfo *car_info)
@@ -157,38 +159,38 @@ void initMsg(carInfo *car_info)
 
   car_info->front_right_wheel.length = 8;
   car_info->front_left_wheel.length = 8;
-  car_info->back_right_wheel.length = 8;
-  car_info->back_left_wheel.length = 8;
+  car_info->rear_right_wheel.length = 8;
+  car_info->rear_left_wheel.length = 8;
 
   car_info->front_right_wheel.data[0] = 1;
   car_info->front_left_wheel.data[0] = 2;
-  car_info->back_right_wheel.data[0] = 3;
-  car_info->back_left_wheel.data[0] = 4;
+  car_info->rear_right_wheel.data[0] = 3;
+  car_info->rear_left_wheel.data[0] = 4;
 
   car_info->front_right_wheel.data[1] = 6;
   car_info->front_left_wheel.data[1] = 6;
-  car_info->back_right_wheel.data[1] = 6;
-  car_info->back_left_wheel.data[1] = 6;
+  car_info->rear_right_wheel.data[1] = 6;
+  car_info->rear_left_wheel.data[1] = 6;
 
   car_info->front_right_wheel.data[2] = 0;
   car_info->front_left_wheel.data[2] = 0;
-  car_info->back_right_wheel.data[2] = 0;
-  car_info->back_left_wheel.data[2] = 0;
+  car_info->rear_right_wheel.data[2] = 0;
+  car_info->rear_left_wheel.data[2] = 0;
 
   car_info->front_right_wheel.data[3] = 67;
   car_info->front_left_wheel.data[3] = 67;
-  car_info->back_right_wheel.data[3] = 67;
-  car_info->back_left_wheel.data[3] = 67;
+  car_info->rear_right_wheel.data[3] = 67;
+  car_info->rear_left_wheel.data[3] = 67;
 
   car_info->front_right_wheel.data[4] = 0;
   car_info->front_left_wheel.data[4] = 0;
-  car_info->back_right_wheel.data[4] = 0;
-  car_info->back_left_wheel.data[4] = 0;
+  car_info->rear_right_wheel.data[4] = 0;
+  car_info->rear_left_wheel.data[4] = 0;
 
   car_info->front_right_wheel.data[5] = 0;
   car_info->front_left_wheel.data[5] = 0;
-  car_info->back_right_wheel.data[5] = 0;
-  car_info->back_left_wheel.data[5] = 0;
+  car_info->rear_right_wheel.data[5] = 0;
+  car_info->rear_left_wheel.data[5] = 0;
 }
 
 void receiveMsg(carInfo *car_info) 
@@ -197,13 +199,13 @@ void receiveMsg(carInfo *car_info)
   
   readRegister_wheel(&car_info->front_right_wheel, 1);
   readRegister_wheel(&car_info->front_left_wheel, 2);
-  readRegister_wheel(&car_info->back_right_wheel, 3);
-  readRegister_wheel(&car_info->back_left_wheel, 4);
+  readRegister_wheel(&car_info->rear_right_wheel, 3);
+  readRegister_wheel(&car_info->rear_left_wheel, 4);
 
   CRC16Generate(&car_info->front_right_wheel);
   CRC16Generate(&car_info->front_left_wheel);
-  CRC16Generate(&car_info->back_right_wheel);
-  CRC16Generate(&car_info->back_left_wheel);
+  CRC16Generate(&car_info->rear_right_wheel);
+  CRC16Generate(&car_info->rear_left_wheel);
 
   transmitData(&car_info->front_right_wheel);
   receiveData(&car_info->front_right_wheel);
@@ -211,19 +213,19 @@ void receiveMsg(carInfo *car_info)
   transmitData(&car_info->front_left_wheel);
   receiveData(&car_info->front_left_wheel);
 
-  transmitData(&car_info->back_right_wheel);
-  receiveData(&car_info->back_right_wheel);
+  transmitData(&car_info->rear_right_wheel);
+  receiveData(&car_info->rear_right_wheel);
 
-  transmitData(&car_info->back_left_wheel);
-  receiveData(&car_info->back_left_wheel);
+  transmitData(&car_info->rear_left_wheel);
+  receiveData(&car_info->rear_left_wheel);
 }
 
 void clearMsg(carInfo *car_info)
 {
   clearData(&car_info->front_right_wheel);
   clearData(&car_info->front_left_wheel);
-  clearData(&car_info->back_right_wheel);
-  clearData(&car_info->back_left_wheel);
+  clearData(&car_info->rear_right_wheel);
+  clearData(&car_info->rear_left_wheel);
 }
 
 void clearData(serialData *targetMsg)
@@ -267,6 +269,6 @@ void calcRpm(carInfo *car_info)
 
   car_info->front_right_rpm = calcSingleRpm(car_info->front_right_wheel);
   car_info->front_left_rpm = calcSingleRpm(car_info->front_left_wheel);
-  car_info->back_right_rpm = calcSingleRpm(car_info->back_right_wheel);
-  car_info->back_left_rpm = calcSingleRpm(car_info->back_left_wheel);
+  car_info->rear_right_rpm = calcSingleRpm(car_info->rear_right_wheel);
+  car_info->rear_left_rpm = calcSingleRpm(car_info->rear_left_wheel);
 }
