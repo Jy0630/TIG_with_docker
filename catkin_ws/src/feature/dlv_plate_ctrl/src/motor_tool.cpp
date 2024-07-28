@@ -10,6 +10,7 @@ void readRegister();
 void writeRegister();
 void settingController(uint8_t address);
 void settingPID(uint8_t address, char type);
+void readPID(uint8_t address, char type);
 void clearMsg(serialData *targetMsg);
 
 serialData msg;
@@ -24,7 +25,7 @@ int main(int argc, char **argv){
 
     while(ros::ok()){
 
-        std::cout << "choose mode 1:read register 2:write register 3:setting controller 4:PID setting" << std::endl;
+        std::cout << "choose mode 1:read register 2:write register 3:setting controller 4:PID setting 5:read PID" << std::endl;
         std::cin >> mode;
         std::cin.get();
 
@@ -58,6 +59,17 @@ int main(int argc, char **argv){
             std::cin >> type;
             std::cin.get();
             settingPID((uint8_t)address, type);
+        }
+        else if(mode == 5){
+            int address;
+            char type;
+            std::cout << "enter target address:" << std::endl;
+            std::cin >> std::dec >> address;
+            std::cin.get();
+            std::cout << "p or i or d ?" << std::endl;
+            std::cin >> type;
+            std::cin.get();
+            readPID((uint8_t)address, type);
         }
         else{
             continue;
@@ -346,6 +358,46 @@ void settingPID(uint8_t address, char type){
     
     return;
 }
+
+
+
+void readPID(uint8_t address, char type){
+    clearMsg(&msg);
+    msg.length = 8;
+    msg.data[0] = address;
+    msg.data[1] = 0x03; // Function code for reading
+
+    if(type == 'p'){
+        msg.data[2] = 0x00;
+        msg.data[3] = 0xc0; // Register address for P value
+        msg.data[4] = 0x00;
+        msg.data[5] = 0x02; // Number of registers to read (2 registers for a float value)
+    }
+    else if(type == 'i'){
+        msg.data[2] = 0x00;
+        msg.data[3] = 0xc2; // Register address for I value
+        msg.data[4] = 0x00;
+        msg.data[5] = 0x02;
+    }
+    else if(type == 'd'){
+        msg.data[2] = 0x00;
+        msg.data[3] = 0xc4; // Register address for D value
+        msg.data[4] = 0x00;
+        msg.data[5] = 0x02;
+    }
+
+    CRC16Generate(&msg);
+    transmitData(&msg);
+    receiveData(&msg);
+
+    // Assuming the receiveData fills msg.data with the response
+    unsigned int receivedValue = (msg.data[3] << 24) | (msg.data[4] << 16) | (msg.data[5] << 8) | msg.data[6];
+    float *float_ptr = (float *)&receivedValue;
+    float pidValue = *float_ptr;
+
+    std::cout << "PID " << type << " value: " << pidValue << std::endl;
+}
+
 
 void clearMsg(serialData *targetMsg){
     for(int i = 0; i < 20; i++){
