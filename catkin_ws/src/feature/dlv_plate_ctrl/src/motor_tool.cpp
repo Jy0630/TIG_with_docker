@@ -9,7 +9,8 @@ extern "C"{
 void readRegister();
 void writeRegister();
 void settingController(uint8_t address);
-void settingPID(uint8_t address, char type);
+// void settingPID(uint8_t address, char type);
+void settingPID(uint8_t address, float p, float i, float d);
 void readPID(uint8_t address, char type);
 void clearMsg(serialData *targetMsg);
 
@@ -50,15 +51,30 @@ int main(int argc, char **argv){
             settingController((uint8_t)address);
         }
         else if(mode == 4){
+            // int address;
+            // char type;
+            // std::cout << "enter target address:" << std::endl;
+            // std::cin >> std::dec >> address;
+            // std::cin.get();
+            // std::cout << "p or i or d ?" << std::endl;
+            // std::cin >> type;
+            // std::cin.get();
+            // settingPID((uint8_t)address, type);
             int address;
-            char type;
+            float p, i, d;
             std::cout << "enter target address:" << std::endl;
             std::cin >> std::dec >> address;
             std::cin.get();
-            std::cout << "p or i or d ?" << std::endl;
-            std::cin >> type;
+            std::cout << "enter P value (0.001 ~ 1.0):" << std::endl;
+            std::cin >> p;
             std::cin.get();
-            settingPID((uint8_t)address, type);
+            std::cout << "enter I value (0.001 ~ 1.0):" << std::endl;
+            std::cin >> i;
+            std::cin.get();
+            std::cout << "enter D value (0.001 ~ 1.0):" << std::endl;
+            std::cin >> d;
+            std::cin.get();
+            settingPID((uint8_t)address, p, i, d);
         }
         else if(mode == 5){
             int address;
@@ -268,96 +284,128 @@ void settingController(uint8_t address){
     return;
 }
 
-void settingPID(uint8_t address, char type){
-    float floatinput;
-    unsigned int *input_ptr;
-    unsigned int  input;
+// void settingPID(uint8_t address, char type){
+//     float floatinput;
+//     unsigned int *input_ptr;
+//     unsigned int  input;
 
-    std::cout << "enter data: p(0.001~1) i(0.001~1) d(0.001~1) (dec)" << std::endl;
-    std::cin >> std::dec >> floatinput;
-    std::cin.get();
+//     std::cout << "enter data: p(0.001~1) i(0.001~1) d(0.001~1) (dec)" << std::endl;
+//     std::cin >> std::dec >> floatinput;
+//     std::cin.get();
 
-    input_ptr = (unsigned int *)&floatinput;
-    input = *input_ptr;
+//     input_ptr = (unsigned int *)&floatinput;
+//     input = *input_ptr;
 
-    if(type == 'p'){
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc0;
-        msg.data[4] = (0xff & (input >> 24));
-        msg.data[5] = (0xff & (input >> 16));
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
+//     if(type == 'p'){
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc0;
+//         msg.data[4] = (0xff & (input >> 24));
+//         msg.data[5] = (0xff & (input >> 16));
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
 
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc1;
-        msg.data[4] = (0xff & (input >> 8));
-        msg.data[5] = (0xff & input);
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
-    }
-    else if(type == 'i'){
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc2;
-        msg.data[4] = (0xff & (input >> 24));
-        msg.data[5] = (0xff & (input >> 16));
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc1;
+//         msg.data[4] = (0xff & (input >> 8));
+//         msg.data[5] = (0xff & input);
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
+//     }
+//     else if(type == 'i'){
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc2;
+//         msg.data[4] = (0xff & (input >> 24));
+//         msg.data[5] = (0xff & (input >> 16));
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
 
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc3;
-        msg.data[4] = (0xff & (input >> 8));
-        msg.data[5] = (0xff & input);
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
-    }
-    else if(type == 'd'){
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc4;
-        msg.data[4] = (0xff & (input >> 24));
-        msg.data[5] = (0xff & (input >> 16));
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc3;
+//         msg.data[4] = (0xff & (input >> 8));
+//         msg.data[5] = (0xff & input);
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
+//     }
+//     else if(type == 'd'){
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc4;
+//         msg.data[4] = (0xff & (input >> 24));
+//         msg.data[5] = (0xff & (input >> 16));
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
 
-        clearMsg(&msg);
-        msg.length = 8;
-        msg.data[0] = address;
-        msg.data[1] = 0x06;
-        msg.data[2] = 0x00;
-        msg.data[3] = 0xc5;
-        msg.data[4] = (0xff & (input >> 8));
-        msg.data[5] = (0xff & input);
-        CRC16Generate(&msg);
-        transmitData(&msg);
-        receiveData(&msg);
-    }
+//         clearMsg(&msg);
+//         msg.length = 8;
+//         msg.data[0] = address;
+//         msg.data[1] = 0x10;
+//         msg.data[2] = 0x00;
+//         msg.data[3] = 0xc5;
+//         msg.data[4] = (0xff & (input >> 8));
+//         msg.data[5] = (0xff & input);
+//         CRC16Generate(&msg);
+//         transmitData(&msg);
+//         receiveData(&msg);
+//     }
     
-    return;
+//     return;
+// }
+
+void settingPID(uint8_t address, float p, float i, float d) {
+    unsigned int p_val = *reinterpret_cast<unsigned int*>(&p);
+    unsigned int i_val = *reinterpret_cast<unsigned int*>(&i);
+    unsigned int d_val = *reinterpret_cast<unsigned int*>(&d);
+
+    uint16_t values[6] = {
+        (p_val >> 16) & 0xFFFF, p_val & 0xFFFF,
+        (i_val >> 16) & 0xFFFF, i_val & 0xFFFF,
+        (d_val >> 16) & 0xFFFF, d_val & 0xFFFF
+    };
+
+    clearMsg(&msg);
+    msg.length = 17; // 9 + 2 * 4 (for 6 registers)
+    msg.data[0] = address;
+    msg.data[1] = 0x10; // Function code for writing multiple registers
+    msg.data[2] = 0x00;
+    msg.data[3] = 0xc0;
+    msg.data[4] = 0x00;
+    msg.data[5] = 6;
+    msg.data[6] = 12; // Byte count: 2 bytes per register * 6 registers
+
+    for (uint8_t i = 0; i < 6; ++i) {
+        msg.data[7 + 2 * i] = (values[i] >> 8) & 0xFF;
+        msg.data[8 + 2 * i] = values[i] & 0xFF;
+    }
+
+    CRC16Generate(&msg);
+    transmitData(&msg);
+    receiveData(&msg);
 }
+
 
 
 
