@@ -72,22 +72,22 @@ void CallBack_rr(const std_msgs::Float64::ConstPtr& Omega){
 void CalculatePosition(AngularVel* angularvel, Position* position){
     static ros::Time last_time = ros::Time::now();
 
-    double R = 0.075;  // 轮子半径 0.075
-    double Lx = 0.62;  // 轮子间的轴距 (横向)
-    double Ly = 0.62;  // 轮子间的轴距 (纵向)
+    double R = 0.0375;  // 轮子半径 0.0375m
+    double Lx = 0.56;  // 轮子间的轴距 (横向)
+    double Ly = 0.457;  // 轮子间的轴距 (纵向)
 
     ros::Time current_time = ros::Time::now();
     double dt = (current_time - last_time).toSec();
 
     MotionState motion = CalculateMotion(angularvel, R, Lx, Ly, position, dt);
 
-    position->x += motion.vx * dt;
-    position->y += motion.vy * dt;
+    position->x += motion.vx * dt *10;
+    position->y += motion.vy * dt *10;
     position->theta += motion.omega * dt;
 
-    #ifdef DEBUG
+    
     std::cout << "x: " << position->x << ", y: " << position->y << ", theta (degrees): " << (position->theta * 180 / M_PI) << "\n";
-    #endif
+    
 
     last_time = current_time;
 }
@@ -147,7 +147,7 @@ int main(int argc, char **argv){
         odom_trans.header.frame_id = "odom";
         odom_trans.child_frame_id = "base_footprint";
 
-        odom_trans.transform.translation.x = position.x;
+        odom_trans.transform.translation.x = position.x; 
         odom_trans.transform.translation.y = position.y;
         odom_trans.transform.translation.z = 0.0;
         odom_trans.transform.rotation = odom_quat;

@@ -52,8 +52,12 @@ int main(int argc, char **argv)
     if (rear_right_rpm_msg.data > 32767) rear_right_rpm_msg.data -= 65536;
     if (rear_left_rpm_msg.data > 32767) rear_left_rpm_msg.data -= 65536;
 
-    front_left_rpm_msg.data *= -1;
-    rear_right_rpm_msg.data *= -1;
+    front_right_rpm_msg.data *= 0.1;
+    front_left_rpm_msg.data *= -0.1;
+    rear_left_rpm_msg.data *= 0.1;
+    rear_right_rpm_msg.data *= -0.1; 
+    // front_left_rpm_msg.data *= -1;
+    // rear_right_rpm_msg.data *= -1;
 
     frontRightRpmPub.publish(front_right_rpm_msg);
     frontLeftRpmPub.publish(front_left_rpm_msg);
@@ -82,10 +86,10 @@ void processMsg(carInfo *car_info)
   double wheel_radius = 0.0375;
   double axis_length = 0.56;
 
-  double front_right_vel = (linear_x - linear_y - angular_z * axis_length) / wheel_radius;
-  double front_left_vel = -(linear_x + linear_y + angular_z * axis_length) / wheel_radius; // Negative due to the direction
-  double rear_right_vel = -(linear_x + linear_y - angular_z * axis_length) / wheel_radius; // Negative due to the direction
-  double rear_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius;
+  double front_right_vel = (linear_x - linear_y - angular_z * axis_length) / wheel_radius*10;
+  double front_left_vel = -(linear_x + linear_y + angular_z * axis_length) / wheel_radius*10; // Negative due to the direction
+  double rear_right_vel = -(linear_x + linear_y - angular_z * axis_length) / wheel_radius*10; // Negative due to the direction
+  double rear_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius*10;
 
   double max_vel = 3000.0;
 
@@ -271,7 +275,7 @@ void calcRpm(carInfo *car_info)
   };
 
   car_info->front_right_rpm = calcSingleRpm(car_info->front_right_wheel);
-  car_info->front_left_rpm = calcSingleRpm(car_info->front_left_wheel); // Negative due to the direction
-  car_info->rear_right_rpm = calcSingleRpm(car_info->rear_right_wheel); // Negative due to the direction
+  car_info->front_left_rpm = calcSingleRpm(car_info->front_left_wheel);
+  car_info->rear_right_rpm = calcSingleRpm(car_info->rear_right_wheel); 
   car_info->rear_left_rpm = calcSingleRpm(car_info->rear_left_wheel);
 }
