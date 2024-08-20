@@ -48,25 +48,25 @@ MotionState CalculateMotion(AngularVel* angularvel, double R, double Lx, double 
 void CallBack_fl(const std_msgs::Float64::ConstPtr& Omega){
     angularvel.omega_fl = Omega->data;
     angularvel.omega_fl /= 60; // RoundPerSecond
-    angularvel.omega_fl *= (0.1 * M_PI); // achieve omega of front-left wheel
+    // angularvel.omega_fl *= (0.1 * M_PI); // achieve omega of front-left wheel
 }
 
 void CallBack_fr(const std_msgs::Float64::ConstPtr& Omega){
     angularvel.omega_fr = Omega->data;
     angularvel.omega_fr /= 60;
-    angularvel.omega_fr *= (0.1 * M_PI);
+    // angularvel.omega_fr *= (0.1 * M_PI);
 }
 
 void CallBack_rl(const std_msgs::Float64::ConstPtr& Omega){
     angularvel.omega_rl = Omega->data;
     angularvel.omega_rl /= 60;
-    angularvel.omega_rl *= (0.1 * M_PI);
+    // angularvel.omega_rl *= (0.1 * M_PI);
 }
 
 void CallBack_rr(const std_msgs::Float64::ConstPtr& Omega){
     angularvel.omega_rr = Omega->data;
     angularvel.omega_rr /= 60;
-    angularvel.omega_rr *= (0.1 * M_PI);
+    // angularvel.omega_rr *= (0.1 * M_PI);
 }
 
 void CalculatePosition(AngularVel* angularvel, Position* position){
@@ -81,22 +81,22 @@ void CalculatePosition(AngularVel* angularvel, Position* position){
 
     MotionState motion = CalculateMotion(angularvel, R, Lx, Ly, position, dt);
 
-    position->x += motion.vx * dt *10;
-    position->y += motion.vy * dt *10;
+    position->x += motion.vx * dt;
+    position->y += motion.vy * dt;
     position->theta += motion.omega * dt;
 
     
-    std::cout << "x: " << position->x << ", y: " << position->y << ", theta (degrees): " << (position->theta * 180 / M_PI) << "\n";
+    // std::cout << "x: " << position->x << ", y: " << position->y << ", theta (degrees): " << (position->theta * 180 / M_PI) << "\n";
     
 
     last_time = current_time;
 }
 
 MotionState CalculateMotion(AngularVel* angularvel, double R, double Lx, double Ly, Position* position, double dt){
-    double v_fl = angularvel->omega_fl * R;
-    double v_fr = angularvel->omega_fr * R;
-    double v_rl = angularvel->omega_rl * R;
-    double v_rr = angularvel->omega_rr * R;
+    double v_fl = angularvel->omega_fl * 2 * M_PI * R;
+    double v_fr = angularvel->omega_fr * 2 * M_PI * R;
+    double v_rl = angularvel->omega_rl * 2 * M_PI * R;
+    double v_rr = angularvel->omega_rr * 2 * M_PI * R;
 
     double vx = (v_fl + v_fr + v_rl + v_rr) / 4;
     double vy = (-v_fl + v_fr + v_rl - v_rr) / 4;
@@ -133,7 +133,12 @@ int main(int argc, char **argv){
 
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(position.theta);
 
+
+
         odom.pose.pose.orientation = odom_quat;
+
+
+        // odom.pose.pose.orientation = odom_quat;
 
         odom.twist.twist.linear.x = 0.0;
         odom.twist.twist.linear.y = 0.0;
