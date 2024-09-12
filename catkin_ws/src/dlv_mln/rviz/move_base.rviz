@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /local plan1
         - /global plan1
       Splitter Ratio: 0.5
     Tree Height: 555
@@ -144,7 +145,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /move_base/TrajectoryPlannerROS/local_plan
+      Topic: /move_base/DWAPlannerROS/local_plan
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -305,4 +306,4 @@ Window Geometry:
     collapsed: true
   Width: 1200
   X: 511
-  Y: 121
+  Y: 84

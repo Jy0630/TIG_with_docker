@@ -72,7 +72,7 @@ void CallBack_rr(const std_msgs::Float64::ConstPtr& Omega){
 void CalculatePosition(AngularVel* angularvel, Position* position){
     static ros::Time last_time = ros::Time::now();
 
-    double R = 0.05;  // 轮子半径 0.0375m
+    double R = 0.0375;  // 轮子半径 0.0375m
     double Lx = 0.56;  // 轮子间的轴距 (横向)
     double Ly = 0.457;  // 轮子间的轴距 (纵向)
 
@@ -81,8 +81,8 @@ void CalculatePosition(AngularVel* angularvel, Position* position){
 
     MotionState motion = CalculateMotion(angularvel, R, Lx, Ly, position, dt);
 
-    position->x += (motion.vx * dt) * cos(position->theta) + (motion.vy * dt) * sin(position->theta); // * cos(position->theta);
-    position->y += (motion.vx * dt) * sin(position->theta) + (motion.vy * dt) * cos(position->theta); // * sin(position->theta);
+    position->x += (motion.vx * dt) * cos(position->theta); // * cos(position->theta);
+    position->y += (motion.vx * dt) * sin(position->theta); // * sin(position->theta);
     position->theta += motion.omega * dt;
 
     // position ->theta = fmod(position->theta, 2 * M_PI);
@@ -138,10 +138,7 @@ int main(int argc, char **argv){
 
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(position.theta); 
 
-        // odom_quat.x *= 1;
-        // odom_quat.y *= 1;
-        // odom_quat.z *= -1;
-        // odom_quat.w *= 1;
+
 
         odom.pose.pose.orientation = odom_quat;
 

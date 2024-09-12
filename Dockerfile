@@ -92,6 +92,9 @@ RUN apt-get update && apt-get install -y qtwayland5
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yqq xserver-xorg
 RUN apt-get update && apt-get install -y xwayland
 
+# Install realsense2_camera
+RUN apt-get update && apt-get install -y ros-noetic-realsense2-camera
+
 # Download Gmapping
 RUN apt-get install ros-noetic-gmapping -y
 RUN apt-get install ros-noetic-slam-gmapping -y

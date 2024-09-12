@@ -17,8 +17,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(two_wheel_odom_for_fusion src/two_wheel_odom_for_fusion.cpp)
-target_link_libraries(two_wheel_odom_for_fusion ${catkin_LIBRARIES})
+add_executable(mecanum_odom_for_fusion src/mecanum_odom_for_fusion.cpp)
+target_link_libraries(mecanum_odom_for_fusion ${catkin_LIBRARIES})
 
 catkin_install_python(PROGRAMS
   src/odom_to_base_tf_broadcaster.py

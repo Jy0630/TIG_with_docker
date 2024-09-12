@@ -37,14 +37,14 @@ shutdown_costmaps: false # 在不活動狀態時是否關閉costmap
 TrajectoryPlannerROS:
 
   max_vel_x: 5.0
-  min_vel_x: -5.0
+  min_vel_x: 0
   max_vel_theta: 2.0
   min_vel_theta: -2.0
   min_in_place_vel_theta: 1.35 # 旋轉時的最小速度 //0722test
 
   max_rotational_vel: 1.0 # 最大角速度
   max_vel_trans:  5
-  min_vel_trans:  -5
+  min_vel_trans:  0
 
   # tolerance
   yaw_goal_tolerance: 0.1 # 角度容忍度 0.1弧度

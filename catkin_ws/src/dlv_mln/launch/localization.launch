@@ -6,7 +6,7 @@
 
   <!-- TF broadcaster for base_footprint to laser -->
   <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
-  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" />
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="-0.18 0 0 0 0 0 /base_link /laser 50" /> 
   <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
 
   <!-- Map server -->
@@ -59,7 +59,15 @@
     <param name="pub_map_odom_transform" value="false" />
   </node>
 
-  <node pkg="dlv_mln" name="two_wheel_odom_for_fusion" type="two_wheel_odom_for_fusion" output="screen" 
+   <!-- Odom method: realsense -->
+  <include file="$(find realsense2_camera)/launch/rs_t265.launch"
+    if="$(eval arg('odom_method') == 'realsense')" >
+    <arg name="enable_pose" value="true"/>
+    <arg name="enable_accel" value="true"/>
+
+  </include>
+
+  <node pkg="dlv_mln" name="mecanum_odom_for_fusion" type="mecanum_odom_for_fusion" output="screen" 
     if="$(eval arg('odom_method') == 'fusion')" />
 
   <!-- AMCL -->

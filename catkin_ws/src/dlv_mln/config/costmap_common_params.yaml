@@ -6,7 +6,7 @@
 # https://docs.nav2.org/configuration/packages/configuring-costmaps.html
 
 # Frame settings
-footprint: [[0.35, 0.35], [0.35, -0.35],[-0.35, -0.35], [-0.35, 0.35]]
+footprint: [[0.32, 0.32], [0.32, -0.32],[-0.32, -0.32], [-0.32, 0.32]]
 footprint_padding: 0.01
 
 robot_base_frame: base_footprint
