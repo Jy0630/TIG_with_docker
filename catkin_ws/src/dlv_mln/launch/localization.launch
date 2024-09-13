@@ -60,6 +60,9 @@
   </node>
 
    <!-- Odom method: realsense -->
+   <node pkg="dlv_mln" name="odom_to_base_tf_broadcaster" type="odom_to_base_tf_cam.py"  output="screen"
+    if="$(eval arg('odom_method') == 'realsense')" />
+
   <include file="$(find realsense2_camera)/launch/rs_t265.launch"
     if="$(eval arg('odom_method') == 'realsense')" >
     <arg name="enable_pose" value="true"/>
