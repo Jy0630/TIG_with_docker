@@ -15,4 +15,5 @@ def handle_odom_to_base(msg):
 if __name__ == "__main__" :
     rospy.init_node("odom_to_base_tf_broadcaster")
     rospy.Subscriber('/odom', Odometry, handle_odom_to_base)
+    # rospy.Subscriber('/camera/odom/sample', Odometry, handle_odom_to_base)
     rospy.spin()
