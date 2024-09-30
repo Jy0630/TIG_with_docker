@@ -1,2 +1,2 @@
-# Set the udev rule, make the device_port be fixed
-ATTRS{idVendor}=="8086", ATTRS{idProduct}=="0b37", MODE="0666"
+# Set the udev rule, make the device_port be fixed , ATTRS{idProduct}=="0b37", MODE="0666"
+ATTRS{idVendor}=="8086"

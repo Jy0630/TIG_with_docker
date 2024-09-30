@@ -9,7 +9,8 @@ base_local_planner: dwa_local_planner/DWAPlannerROS
 controller_frequency: 5 # 發布速度指令的頻率
 controller_patience: 15.0 # 在停止之前允許的最大時間
 
-planner_frequency: 3 # 規劃器的頻率
+planner_frequency: 5 # 規劃器的頻率
+
 planner_patience: 15.0
 
 oscillation_timeout: 10 # 在執行recovery前允許的最大振動時長
@@ -34,34 +35,34 @@ GlobalPlanner:
 DWAPlannerROS:
 
   # Robot Configuration Parameters
-  max_vel_x: 7
-  min_vel_x: -7
+  max_vel_x: 0.7
+  min_vel_x: -0.7
 
   max_vel_y: 0
   min_vel_y: 0
 
   # The velocity when robot is moving in a straight line
-  max_vel_trans:  7
-  min_vel_trans:  0.5
-  trans_stopped_velocity: 0.5
+  max_vel_trans:  0.7
+  min_vel_trans:  -0.7
+  trans_stopped_velocity: 0.08
   # max_rotational_vel: 6.5
 
-  max_vel_theta: 8
-  min_vel_theta: -8
+  max_vel_theta: 0.8
+  min_vel_theta: 0.11
 
-  min_in_place_rotational_vel: 1
+  min_in_place_rotational_vel: 0.1
 
-  acc_lim_x: 8.5
+  acc_lim_x: 0.85
   acc_lim_y: 0
-  acc_lim_theta: 9
+  acc_lim_theta: 0.9
 
   # Goal Tolerance Parametes
   xy_goal_tolerance: 0.1
   yaw_goal_tolerance: 0.1
-  latch_xy_goal_tolerance: true 
+  latch_xy_goal_tolerance: false
 
   # Forward Simulation Parameters
-  sim_time: 1.5
+  sim_time: 1.25
   vx_samples: 25
   vy_samples: 1
   vth_samples: 45
@@ -69,11 +70,11 @@ DWAPlannerROS:
 
   # Trajectory Scoring Parameters 
   path_distance_bias: 1.0
-  goal_distance_bias: 0.85
+  goal_distance_bias: 0.
   occdist_scale: 8
-  forward_point_distance: 0.5
+  forward_point_distance: 0.6
   stop_time_buffer: 0.5
-  scaling_speed: 0.5
+  scaling_speed: 0.6
   max_scaling_factor: 0.5 
 
   # Oscillation Prevention Parameters

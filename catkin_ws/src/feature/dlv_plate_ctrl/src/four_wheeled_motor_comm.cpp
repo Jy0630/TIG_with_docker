@@ -86,10 +86,10 @@ void processMsg(carInfo *car_info)
   double wheel_radius = 0.05;
   double axis_length = 0.56;
 
-  double front_right_vel = (linear_x + linear_y + angular_z * axis_length) / wheel_radius *20;
-  double front_left_vel = -(linear_x - linear_y - angular_z * axis_length) / wheel_radius *20; // Negative due to the direction
-  double rear_right_vel = -(linear_x - linear_y + angular_z * axis_length) / wheel_radius *20; // Negative due to the direction
-  double rear_left_vel = (linear_x + linear_y - angular_z * axis_length) / wheel_radius *20;
+  double front_right_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius *200;
+  double front_left_vel = -(linear_x + linear_y - angular_z * axis_length) / wheel_radius *200; // Negative due to the direction
+  double rear_right_vel = -(linear_x + linear_y + angular_z * axis_length) / wheel_radius *200; // Negative due to the direction
+  double rear_left_vel = (linear_x - linear_y - angular_z * axis_length) / wheel_radius *200;
 
   double max_vel = 2500.0;
 
@@ -110,6 +110,7 @@ void processMsg(carInfo *car_info)
   car_info->front_right_wheel.length = 8;
   car_info->front_left_wheel.length = 8;
   car_info->rear_right_wheel.length = 8;
+  
   car_info->rear_left_wheel.length = 8;
 
   car_info->front_right_wheel.data[0] = 1;

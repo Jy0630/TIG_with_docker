@@ -2,7 +2,7 @@
 
   <!-- Methods setting -->
   <arg name="scan_method" default="scan" /> <!-- scan, bag, sim -->
-  <arg name="odom_method" default="realsense" /> <!-- calc, hector -->
+  <arg name="odom_method" default="mecanum" /> <!-- calc, hector -->
 
   <!-- Connect to the wheels -->
   <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
