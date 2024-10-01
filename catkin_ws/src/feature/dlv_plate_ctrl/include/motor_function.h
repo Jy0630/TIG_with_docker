@@ -18,6 +18,9 @@ extern int serialPort;  //serial port object
 typedef struct {
   uint8_t data[20];
   int length;
+  double p;
+  double i;
+  double d;
 }serialData;
 
 typedef struct {
