@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="dlv_plate_ctrl" name="four_wheeled_motor_comm" type="four_wheeled_motor_comm" output="screen"/>
+
+  <node name="move_robot" pkg="dlv_plate_ctrl" type="move_robot.py" output="screen" />
+</launch>
