@@ -21,6 +21,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+install(DIRECTORY param/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/param
+)
+
 add_library(motor_tool_library src/motor_function.c include/motor_function.h)
 
 add_executable(motor_tool src/motor_tool.cpp)

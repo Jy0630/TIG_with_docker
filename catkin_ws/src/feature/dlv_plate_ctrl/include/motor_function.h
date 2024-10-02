@@ -18,9 +18,6 @@ extern int serialPort;  //serial port object
 typedef struct {
   uint8_t data[20];
   int length;
-  double p;
-  double i;
-  double d;
 }serialData;
 
 typedef struct {
@@ -39,6 +36,18 @@ typedef struct {
   double front_left_rpm;
   double rear_right_rpm;
   double rear_left_rpm;
+  double front_right_wheel_p;
+  double front_right_wheel_i;
+  double front_right_wheel_d;
+  double front_left_wheel_p;
+  double front_left_wheel_i;
+  double front_left_wheel_d;
+  double rear_right_wheel_p;
+  double rear_right_wheel_i;
+  double rear_right_wheel_d;
+  double rear_left_wheel_p;
+  double rear_left_wheel_i;
+  double rear_left_wheel_d;
 }carInfo;
 
 void serialInit();
