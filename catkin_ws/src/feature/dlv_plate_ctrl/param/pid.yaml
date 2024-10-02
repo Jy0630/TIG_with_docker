@@ -1,19 +1,20 @@
-front_right: 
-    p: 0.135 
-    i: 0.002 
-    d: 0.004
+pid:
+    front_right: 
+        p: 0.135 
+        i: 0.002 
+        d: 0.004
 
-front_left:
-    p: 0.135
-    i: 0.002
-    d: 0.004
+    front_left:
+        p: 0.135
+        i: 0.002
+        d: 0.004
 
-rear_right:
-    p: 0.0675
-    i: 0.002
-    d: 0.004
+    rear_right:
+        p: 0.0675
+        i: 0.002
+        d: 0.004
 
-rear_left:
-    p: 0.1025
-    i: 0.002
-    d: 0.004
+    rear_left:
+        p: 0.1025
+        i: 0.002
+        d: 0.004
