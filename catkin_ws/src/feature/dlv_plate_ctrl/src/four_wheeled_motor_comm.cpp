@@ -18,6 +18,7 @@ void receiveMsg(carInfo *car_info);
 void clearData(serialData *targetMsg);
 void velCmdCallback(const geometry_msgs::Twist::ConstPtr& msg);
 void readRegister_wheel(serialData *targetMsg, int wheel_id);
+void writePidToController(double p,double i, double d, int wheel_id);
 void calcRpm(carInfo *car_info);
 
 carInfo car_info_;
@@ -28,6 +29,19 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "motor_comm");
   ros::NodeHandle rosNh_sub;
+  // rosNh_sub.getParam("/pid/front_right/p", car_info_.front_right_wheel_p);
+  // rosNh_sub.getParam("/pid/front_right/i", car_info_.front_right_wheel_i);
+  // rosNh_sub.getParam("/pid/front_right/d", car_info_.front_right_wheel_d);
+  // rosNh_sub.getParam("/pid/front_left/p", car_info_.front_left_wheel_p);
+  // rosNh_sub.getParam("/pid/front_left/i", car_info_.front_left_wheel_i);
+  // rosNh_sub.getParam("/pid/front_left/d", car_info_.front_left_wheel_d);
+  // rosNh_sub.getParam("/pid/rear_right/p", car_info_.rear_right_wheel_p);
+  // rosNh_sub.getParam("/pid/rear_right/i", car_info_.rear_right_wheel_i);
+  // rosNh_sub.getParam("/pid/rear_right/d", car_info_.rear_right_wheel_d);
+  // rosNh_sub.getParam("/pid/rear_left/p", car_info_.rear_left_wheel_p);
+  // rosNh_sub.getParam("/pid/rear_left/i", car_info_.rear_left_wheel_i);
+  // rosNh_sub.getParam("/pid/rear_left/d", car_info_.rear_left_wheel_d);
+
   ros::Publisher frontRightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/front_right_wheel/rpm", 1);
   ros::Publisher frontLeftRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/front_left_wheel/rpm", 1);
   ros::Publisher rearRightRpmPub = rosNh_sub.advertise<std_msgs::Float64>("/rear_right_wheel/rpm", 1);
@@ -37,6 +51,11 @@ int main(int argc, char **argv)
   initMsg(&car_info_);
   
   std_msgs::Float64 front_right_rpm_msg, front_left_rpm_msg, rear_right_rpm_msg, rear_left_rpm_msg;
+
+  // writePidToController(car_info_.front_right_wheel_p,car_info_.front_right_wheel_i,car_info_.front_right_wheel_d, 1);
+  // writePidToController(car_info_.front_left_wheel_p,car_info_.front_left_wheel_i,car_info_.front_left_wheel_d,2);
+  // writePidToController(car_info_.rear_right_wheel_p,car_info_.rear_right_wheel_i,car_info_.rear_right_wheel_d, 3);
+  // writePidToController(car_info_.rear_left_wheel_p,car_info_.rear_left_wheel_i,car_info_.rear_left_wheel_d, 4);
   
   while (ros::ok())
   {
@@ -260,6 +279,8 @@ void readRegister_wheel(serialData *targetMsg, int wheel_id)
   targetMsg->data[3] = start_address;
   targetMsg->data[4] = 0x00;
   targetMsg->data[5] = registers_amount;
+
+  return;
 }
 
 void calcRpm(carInfo *car_info)
@@ -280,3 +301,89 @@ void calcRpm(carInfo *car_info)
   car_info->rear_right_rpm = calcSingleRpm(car_info->rear_right_wheel); 
   car_info->rear_left_rpm = calcSingleRpm(car_info->rear_left_wheel);
 }
+
+// void writePidToController(double p, double i, double d, int wheel_id)
+// {
+//     uint16_t controller_address = wheel_id;
+//     serialData msg;
+//     unsigned int *ptr;
+//     // 写入 kp 参数
+//     ptr = (unsigned int *)&(p);
+//     // 发送高字节部分 (kp)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc0;  // KP 高位
+//     msg.data[4] = (0xff & (*ptr >> 24));
+//     msg.data[5] = (0xff & (*ptr >> 16));
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     // 发送低字节部分 (kp)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc1;  // KP 低位
+//     msg.data[4] = (0xff & (*ptr >> 8));
+//     msg.data[5] = (0xff & *ptr);
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     // 写入 ki 参数
+//     ptr = (unsigned int *)&(i);
+//     // 发送高字节部分 (ki)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc2;  // KI 高位
+//     msg.data[4] = (0xff & (*ptr >> 24));
+//     msg.data[5] = (0xff & (*ptr >> 16));
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     // 发送低字节部分 (ki)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc3;  // KI 低位
+//     msg.data[4] = (0xff & (*ptr >> 8));
+//     msg.data[5] = (0xff & *ptr);
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     // 写入 kd 参数
+//     ptr = (unsigned int *)&(d);
+//     // 发送高字节部分 (kd)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc4;  // KD 高位
+//     msg.data[4] = (0xff & (*ptr >> 24));
+//     msg.data[5] = (0xff & (*ptr >> 16));
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     // 发送低字节部分 (kd)
+//     clearData(&msg);
+//     msg.length = 8;
+//     msg.data[0] = controller_address;
+//     msg.data[1] = 0x06;
+//     msg.data[2] = 0x00;
+//     msg.data[3] = 0xc5;  // KD 低位
+//     msg.data[4] = (0xff & (*ptr >> 8));
+//     msg.data[5] = (0xff & *ptr);
+//     CRC16Generate(&msg);
+//     transmitData(&msg);
+//     receiveData(&msg);
+//     return;
+// }
