@@ -3,6 +3,9 @@ FROM ros:noetic
 # Specify terminal color
 ENV TERM xterm-256color
 
+# clear and reload apt cache
+# RUN apt clean && apt update
+
 # Install nvim
 RUN apt-get update && apt-get install -y neovim
 
@@ -133,6 +136,9 @@ RUN apt-get install ros-noetic-robot-state-publisher -y
 
 # Install ros-noetic-robot-localization
 RUN apt-get install ros-noetic-robot-localization -y
+
+# Install rqt_plot
+# RUN apt-get install ros-noetic-rqt-plot -y
 
 WORKDIR /root/catkin_ws
 

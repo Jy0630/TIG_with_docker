@@ -1,5 +1,17 @@
 <launch>
-  <node pkg="dlv_plate_ctrl" name="four_wheeled_motor_comm" type="four_wheeled_motor_comm" output="screen"/>
+  <!-- Plate -->
+  <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
 
-  <node pkg="dlv_plate_ctrl" name="move_robot" type="move_robot.py" output="screen" />
+  <node pkg="dlv_plate_ctrl" name="motor_respond_pub" type="motor_respond_pub" output="screen">
+  </node>
+
+  <node pkg="dlv_plate_ctrl" name="move_robot" type="move_robot.py" output="screen">
+    <param name="linear_x" value="0.0" />
+    <param name="angular_z" value="-0.0625" />
+    <param name="duration" value="27.2" />
+  </node>
+
+  <!-- <node pkg="rqt_plot" name="rqt_plot" type="rqt_plot" args="/motor/actual_speed /dlv/cmd_vel/linear/x" output="screen">
+    <param name="use_ssh" value="false" /> 
+  </node> -->
 </launch>

@@ -30,6 +30,10 @@ add_library(motor_tool_library src/motor_function.c include/motor_function.h)
 add_executable(motor_tool src/motor_tool.cpp)
 target_link_libraries(motor_tool motor_tool_library ${catkin_LIBRARIES})
 
+add_executable(motor_respond_pub src/motor_respond_pub.cpp)
+target_link_libraries(motor_respond_pub ${catkin_LIBRARIES})
+
+
 catkin_install_python(PROGRAMS
   src/move_robot.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

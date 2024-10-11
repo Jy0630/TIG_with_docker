@@ -3,9 +3,9 @@
   <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
   
  <!-- odom -->
-  <!-- <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" /> -->
+  <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
 
 <!-- test -->
-  <include file="$(find dlv_plate_ctrl)/launch/test.launch" />
+  <!-- <include file="$(find dlv_plate_ctrl)/launch/test.launch" /> -->
 
 </launch>
