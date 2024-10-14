@@ -6,7 +6,7 @@ global_costmap:
   global_frame: map
   rolling_window: false
   track_unknown_space: true
-  inflation_radius: 0.35
+  inflation_radius: 0.65
 
   plugins:
     - {name: static_layer, type: "costmap_2d::StaticLayer"}

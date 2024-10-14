@@ -5,10 +5,13 @@
   <node pkg="dlv_plate_ctrl" name="motor_respond_pub" type="motor_respond_pub" output="screen">
   </node>
 
+   <!-- odom -->
+  <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
+
   <node pkg="dlv_plate_ctrl" name="move_robot" type="move_robot.py" output="screen">
-    <param name="linear_x" value="0.0" />
-    <param name="angular_z" value="-0.0625" />
-    <param name="duration" value="27.2" />
+    <param name="linear_x" value="0" />
+    <param name="angular_z" value="0.314" />
+    <param name="duration" value="5.25" />
   </node>
 
   <!-- <node pkg="rqt_plot" name="rqt_plot" type="rqt_plot" args="/motor/actual_speed /dlv/cmd_vel/linear/x" output="screen">

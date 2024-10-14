@@ -72,7 +72,7 @@ void CallBack_rr(const std_msgs::Float64::ConstPtr& Omega){
 void CalculatePosition(AngularVel* angularvel, Position* position){
     static ros::Time last_time = ros::Time::now();
 
-    double R = 0.05;  // 轮子半径 0.0375m
+    double R = 0.05;  // 轮子半径 0.05m
     double Lx = 0.56;  // 轮子间的轴距 (横向)
     double Ly = 0.457;  // 轮子间的轴距 (纵向)
 

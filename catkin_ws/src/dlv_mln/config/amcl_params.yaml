@@ -55,8 +55,8 @@ odom_alpha5: 0.01
 
 # ------------------------ Particle Filter Parameters ------------------------ #
 
-min_particles: 500
-max_particles: 2000
+min_particles: 1000
+max_particles: 2500
 kld_err: 0.1
 kld_z: 0.5
 

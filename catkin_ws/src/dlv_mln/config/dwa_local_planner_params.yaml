@@ -6,15 +6,15 @@
 base_global_planner: global_planner/GlobalPlanner
 base_local_planner: dwa_local_planner/DWAPlannerROS
 
-controller_frequency: 5 # 發布速度指令的頻率
+controller_frequency: 3          # 發布速度指令的頻率
 controller_patience: 15.0 # 在停止之前允許的最大時間
 
-planner_frequency: 5 # 規劃器的頻率
+planner_frequency: 3 # 規劃器的頻率
 
 planner_patience: 15.0
 
 oscillation_timeout: 10 # 在執行recovery前允許的最大振動時長
-oscillation_distance: 0.2 # 允許來回振動的最小距離
+oscillation_distance: 0.01  # 允許來回振動的最小距離
 
 recovery_behavior_enabled: true # 是否啟用恢復行為
 shutdown_costmaps: false # 在不活動狀態時是否關閉costmap
@@ -25,9 +25,9 @@ GlobalPlanner:
   use_quadratic: true # 是否使用二次插值
   use_grid_path: false # 是否使用網格路徑
   old_navfn_behavior: false # 是否使用舊的navfn行為
-  lethal_cost: 260 # 致命代價
-  neutral_cost: 50 # 中性代價
-  cost_factor: 3.0 # 代價因子
+  lethal_cost: 253 # 致命代價
+  neutral_cost: 66 # 中性代價
+  cost_factor: 0.55 # 代價因子
   publish_potential: true # 是否發布潛在代價
   orientation_mode: 1 # 方向模式
   default_tolerance: 0.1 # 默認容忍度
@@ -36,25 +36,25 @@ DWAPlannerROS:
 
   # Robot Configuration Parameters
   max_vel_x: 0.7
-  min_vel_x: -0.7
+  min_vel_x: -0.5                                           
 
   max_vel_y: 0
   min_vel_y: 0
 
   # The velocity when robot is moving in a straight line
   max_vel_trans:  0.7
-  min_vel_trans:  -0.7
+  min_vel_trans:  -0.3
   trans_stopped_velocity: 0.08
   # max_rotational_vel: 6.5
 
   max_vel_theta: 0.8
-  min_vel_theta: 0.11
+  min_vel_theta: 0.08
 
-  min_in_place_rotational_vel: 0.1
+  min_in_place_rotational_vel: 0.01                                              
 
   acc_lim_x: 0.85
   acc_lim_y: 0
-  acc_lim_theta: 0.9
+  acc_lim_theta: 1.0                                                                                                                
 
   # Goal Tolerance Parametes
   xy_goal_tolerance: 0.1
@@ -62,20 +62,20 @@ DWAPlannerROS:
   latch_xy_goal_tolerance: false
 
   # Forward Simulation Parameters
-  sim_time: 1.25
-  vx_samples: 25
+  sim_time: 1.85
+  vx_samples: 40
   vy_samples: 1
-  vth_samples: 45
-  controller_frequency: 5 
+  vth_samples: 55
+  controller_frequency: 5
 
   # Trajectory Scoring Parameters 
-  path_distance_bias: 1.0
-  goal_distance_bias: 0.
-  occdist_scale: 8
-  forward_point_distance: 0.6
-  stop_time_buffer: 0.5
+  path_distance_bias: 32
+  goal_distance_bias: 20
+  occdist_scale: 0.02
+  forward_point_distance: 0.5
+  stop_time_buffer: 0.8
   scaling_speed: 0.6
-  max_scaling_factor: 0.5 
+  max_scaling_factor: 0.3
 
   # Oscillation Prevention Parameters
   oscillation_reset_dist: 0.03

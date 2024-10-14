@@ -1,12 +1,12 @@
 <launch>
-  <arg name="map_file" default="$(find dlv_mln)/maps/0918TDK2_map.yaml" />
+  <arg name="map_file" default="$(find dlv_mln)/maps/1014_test.yaml" />
   <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
   <arg name="odom_method" default="fusion" /> <!-- calc, hector, fusion, mecanum -->
   <arg name="rviz" default="true" />
 
   <!-- TF broadcaster for base_footprint to laser -->
   <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0 0 0 0 /base_footprint /base_link 50"/>
-  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="-0.18 0 0 0 0 0 /base_link /laser 50" /> 
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 /base_link /laser 50" /> 
   <node pkg="tf" type="static_transform_publisher" name="laser_to_scan" args="0 0 0 0 0 0 /laser /scan 50" />
 
   <!-- Map server -->
