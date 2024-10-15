@@ -137,6 +137,10 @@ RUN apt-get install ros-noetic-robot-state-publisher -y
 # Install ros-noetic-robot-localization
 RUN apt-get install ros-noetic-robot-localization -y
 
+# Install pyserial
+RUN pip install pyserial
+
+
 # Install rqt_plot
 # RUN apt-get install ros-noetic-rqt-plot -y
 
