@@ -57,8 +57,8 @@ DWAPlannerROS:
   acc_lim_theta: 1.0                                                                                                                
 
   # Goal Tolerance Parametes
-  xy_goal_tolerance: 0.1
-  yaw_goal_tolerance: 0.1
+  xy_goal_tolerance: 0.2
+  yaw_goal_tolerance: 0.2
   latch_xy_goal_tolerance: false
 
   # Forward Simulation Parameters

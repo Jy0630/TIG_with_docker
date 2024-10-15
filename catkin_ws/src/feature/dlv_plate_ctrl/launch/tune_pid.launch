@@ -9,9 +9,9 @@
   <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
 
   <node pkg="dlv_plate_ctrl" name="move_robot" type="move_robot.py" output="screen">
-    <param name="linear_x" value="-1" /> //6.1,6.4,10.4
-    <param name="angular_z" value="0" /> // 0.5
-    <param name="duration" value="10.4" /> // 3.69
+    <param name="linear_x" value="0" /> //6.1,6.4,10.4
+    <param name="angular_z" value="0.2" /> // 0.5
+    <param name="duration" value="7.85" /> // 3.69
   </node>
 
   <!-- <node pkg="rqt_plot" name="rqt_plot" type="rqt_plot" args="/motor/actual_speed /dlv/cmd_vel/linear/x" output="screen">
