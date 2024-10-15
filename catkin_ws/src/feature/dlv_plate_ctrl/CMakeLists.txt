@@ -39,6 +39,11 @@ catkin_install_python(PROGRAMS
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(PROGRAMS
+  src/s_shape.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 add_executable(motor_comm src/motor_comm.cpp)
 target_link_libraries(motor_comm motor_tool_library ${catkin_LIBRARIES})
 
