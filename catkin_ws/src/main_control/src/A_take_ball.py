@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 
 import rospy
-
-
-# from dlv_plate_ctrl.s_shape_motor import s_shape
-
 from geometry_msgs.msg import Twist
 from time import sleep
 import serial
