@@ -167,7 +167,7 @@ catkin_install_python(PROGRAMS
   src/A_to_C_nav.py
   src/A_to_C_motor.py
   src/control.py
-  src/A_take_ball/py
+  src/A_take_ball.py
 
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
