@@ -1,14 +1,37 @@
 #!/usr/bin/env python
 
 import rospy
-
-
-# from dlv_plate_ctrl.s_shape_motor import s_shape
-
 from geometry_msgs.msg import Twist
 from time import sleep
+import serial
+import time
 
-def A_to_C_motor():
+# 设置串口通信（修改端口号和波特率与Arduino匹配）
+ser = serial.Serial('/dev/arduino', 9600, timeout=1)
+
+# 定义发送给Arduino的函数
+def send_to_arduino(message):
+    if isinstance(message, str) and len(message) == 1:  # Ensure it's a single character
+        ser.write(message.encode())  # Send the character
+        print(f"Sent to Arduino: {message}")
+
+def receive_from_arduino():
+    while True:
+        if ser.in_waiting > 0:  # Check if data is available to read
+            response = ser.read(1)  # Read 1 byte from the serial buffer
+            char_response = response.decode()  # Decode byte to character
+            print(f"Received from Arduino: {char_response}")
+            return char_response  # Return the received character
+
+def wait_for_arduino_ready():
+    print("Waiting for 'f' from Arduino to proceed...")
+    while True:
+        received_char = receive_from_arduino()
+        if received_char == 'f':  # Wait until 'f' is received
+            print("Received 'f' from Arduino, proceeding to the next step.")
+            break
+
+def A_take_ball_motor():
     # Initialize the ROS node
     # rospy.init_node('move_robot_node', anonymous=True)
     
@@ -50,20 +73,21 @@ def A_to_C_motor():
         vel_msg.angular.z = 0.0
         velocity_publisher.publish(vel_msg)
 
-    def A_to_C():
-        move_forward(24.6, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+    def reset_mainB():
+        move_forward(12, 0.35)  # Move forward for 6.1 seconds at 0.25 m/s
         stop_robot()
-        sleep(1)                 # 1-second delay
+        sleep(1)  
 
 
-
-    A_to_C()
+    reset_mainB()
 
 
 def main():
     rospy.init_node('main_control')
     
-    A_to_C_motor()
+    A_take_ball_motor()
+
+
 
 
 if __name__ == '__main__':

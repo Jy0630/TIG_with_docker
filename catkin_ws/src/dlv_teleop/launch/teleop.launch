@@ -1,9 +1,15 @@
 <launch>
   <arg name="method" default="web" />
-
+  <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
   <!-- Web server -->
+  <!-- <include file="$(find dlv_plate_ctrl)/launch/bringup.launch" /> -->
+  <!-- <include file="$(find dlv_plate_ctrl)/launch/test.launch" /> -->
+  
   <group ns="web_teleop" if="$(eval method=='web')">
-   
+  <!-- connect to dlv_plate_ctrl -->
+    <!-- <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" /> -->
+
+  <!-- connect to web server -->
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
       <arg name="port" value="9090" />
     </include>

@@ -164,11 +164,12 @@ catkin_install_python(PROGRAMS
 #   src/mainA.py
   src/reset_mainC.py
   src/reset_mainD.py
-  src/A_to_C_nav.py
+  src/A_to_D_nav.py
   src/A_to_C_motor.py
   src/control.py
-  src/A_take_ball/py
-
+  src/A_take_ball_1.py
+  src/A_take_ball_2.py
+  src/s_shape.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
