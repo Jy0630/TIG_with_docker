@@ -170,6 +170,9 @@ catkin_install_python(PROGRAMS
   src/A_take_ball_1.py
   src/A_take_ball_2.py
   src/s_shape.py
+  src/A_take_ball.py
+
+
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
