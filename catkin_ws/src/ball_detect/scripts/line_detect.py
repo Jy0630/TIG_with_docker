@@ -10,7 +10,7 @@ class LineFollower:
         rospy.init_node('line_follower', anonymous=True)
 
         # 發佈機器人控制指令
-        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+        self.cmd_pub = rospy.Publisher("dlv/cmd_vel", Twist, queue_size=1)
 
         # 從 rosparam 讀取參數
         self.horiz_line_y = rospy.get_param("~horiz_line_y", 240)          # 參考線在影像中的 y 座標

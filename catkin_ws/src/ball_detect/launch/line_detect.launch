@@ -1,7 +1,7 @@
 <launch>
   <node name="line_detect" pkg="ball_detect" type="line_detect.py" output="screen">
 
-    <param name="~camera_id" value="/dev/video4" />
+    <param name="~camera_id" value="/dev/camera" />
     
   </node>
 </launch>
