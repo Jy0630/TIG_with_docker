@@ -13,6 +13,6 @@
     <arg name="odom_method" value="mecanum" />
   </include>
 
-  <node name = "main_control" pkg = "main_control" type = "A_to_C_nav.py" output = "screen" />
+  <node name = "main_control" pkg = "main_control" type = "A_to_D_nav.py" output = "screen" />
 
 </launch>

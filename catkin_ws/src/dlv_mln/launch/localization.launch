@@ -1,5 +1,5 @@
 <launch>
-  <arg name="map_file" default="$(find dlv_mln)/maps/1016_test.yaml" />
+  <arg name="map_file" default="$(find dlv_mln)/maps/0918TDK2_map.yaml" />
   <arg name="scan_method" default="bag" /> <!-- scan, bag, sim -->
   <arg name="odom_method" default="fusion" /> <!-- calc, hector, fusion, mecanum -->
   <arg name="rviz" default="true" />

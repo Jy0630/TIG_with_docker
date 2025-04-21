@@ -1,1 +1,1 @@
-window.local_ip = "192.168.0.176";
+window.local_ip = "192.168.50.187";
