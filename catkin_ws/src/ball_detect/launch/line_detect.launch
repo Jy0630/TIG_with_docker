@@ -1,7 +1,20 @@
 <launch>
   <node name="line_detect" pkg="ball_detect" type="line_detect.py" output="screen">
-
-    <param name="~camera_id" value="/dev/camera" />
-    
+    <param name="camera_id"               value="/dev/camera"/>
+    <param name="horiz_line_y"            value="240"/>
+    <param name="pos_thresh1"             value="20"/>
+    <param name="pos_thresh2"             value="120"/>
+    <param name="pos_thresh3"             value="220"/>
+    <param name="forward_nominal"         value="0.4"/>
+    <param name="forward_stage1"          value="0.3"/>
+    <param name="forward_stage2"          value="0.2"/>
+    <param name="forward_stage3"          value="0.1"/>
+    <param name="trans_stage1"            value="0.1"/>
+    <param name="trans_stage2"            value="0.2"/>
+    <param name="trans_stage3"            value="0.2"/>
+    <param name="angle_thresh1"           value="30"/>
+    <param name="angle_thresh2"           value="50"/>
+    <param name="rot_stage1"              value="0.3"/>
+    <param name="rot_stage2"              value="0.4"/>
   </node>
 </launch>
