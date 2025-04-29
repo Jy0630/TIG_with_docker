@@ -10,7 +10,7 @@ class LineFollower:
         rospy.init_node('line_follower', anonymous=True)
 
         # Publisher
-        self.cmd_pub = rospy.Publisher("dlv/cmd_vel", Twist, queue_size=1)
+        self.cmd_pub = rospy.Publisher("raw_cmd_vel", Twist, queue_size=1)
 
         # ———————— 參數設定 ————————
         # 影像參考線

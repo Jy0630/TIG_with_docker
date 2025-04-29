@@ -1,4 +1,6 @@
 <launch>
+
+  <!-- line follower activate -->
   <node name="line_detect" pkg="line_follower" type="line_detect.py" output="screen">
     <param name="camera_id"               value="/dev/camera"/>
     <param name="horiz_line_y"            value="240"/>
@@ -17,4 +19,10 @@
     <param name="rot_stage1"              value="0.3"/>
     <param name="rot_stage2"              value="0.4"/>
   </node>
+
+  <!-- kalman_filter  -->
+  <rosparam file="$(find line_folower)/config/kalman_params.yaml" command="load" />
+
+  <node name="kalman_filter" pkg="line_follower" type="kalman_filter.py" output="screen"/>
+
 </launch>
