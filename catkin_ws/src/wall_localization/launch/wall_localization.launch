@@ -1,6 +1,6 @@
 <launch>
   <!-- launch rplidar -->
-  <include file="$(find rplidar_ros)/launch/rplidar_s2.launch"/>
+  <include file="$(find rplidar_ros)/launch/view_rplidar_s2.launch"/>
 
   <!-- launch laser line extraction -->
   <node name="line_extractor" pkg="laser_line_extraction" type="line_extraction_node">

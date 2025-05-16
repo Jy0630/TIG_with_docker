@@ -1,65 +1,107 @@
-#!/usr/bin/env python
-import rospy
 import math
-from laser_line_extraction.msg import LineSegmentList
+import numpy as np
+import rospy
+from laser_line_extraction.msg import LineSegmentList, LineSegment
 from std_msgs.msg import Float32MultiArray
 
-def normalize_angle(a):
-    a = abs((a + math.pi) % math.pi)
-    return a if a <= math.pi/2 else math.pi - a
-
-class WallLocator:
+class LineSegmentProcessor:
     def __init__(self):
+        self.line_segments = []
+        # ROS setup
+        rospy.init_node('line_segment_processor', anonymous=True)
+        self.line_sub = rospy.Subscriber('/line_segments', LineSegmentList, self.line_callback)
+        self.output_pub = rospy.Publisher('/wall_info', Float32MultiArray, queue_size=10)
+        self.rate = rospy.Rate(10)  # 10 Hz
 
-        self.sub = rospy.Subscriber(
-            '/line_segments', LineSegmentList, self.cb_lines, queue_size=1)
-        
-        self.pub = rospy.Publisher(
-            '/wall_info', Float32MultiArray, queue_size=1)
-        # save the longest ：(radius, angle, length)
-        self.sides = dict.fromkeys(['front','rear','left','right'], None)
+    def line_callback(self, msg):
+        self.line_segments = msg.line_segments
 
-    def cb_lines(self, msg):
-        # initialize
-        for k in self.sides: self.sides[k] = None
+    def normalize_vector(self, vector):
+        """Normalizes a vector to unit length."""
+        norm = np.linalg.norm(vector)
+        if norm == 0:
+            return vector
+        return vector / norm
 
-        for seg in msg.line_segments:
-            x0,y0 = seg.start; x1,y1 = seg.end
-            dx,dy = x1-x0, y1-y0
-            L = math.hypot(dx,dy)
-            mx,my = (x0+x1)/2, (y0+y1)/2
-            dir_ang = math.atan2(dy,dx)
+    def line_normal_vector(self, segment):
+        """Calculates the normal vector of a line segment.  Correct for left-handed coord."""
+        normal_x = math.cos(segment.angle)
+        normal_y = -math.sin(segment.angle) #Corrected for left-handed
+        return np.array([normal_x, normal_y])
 
-            # front/rear/left/right decision
-            if abs(abs(dir_ang)-math.pi/2) < math.pi/4:
-                side = 'front' if mx>0 else 'rear'
+    def classify_line(self, segment):
+        """Classifies the line segment based on the dot product."""
+        normal_vector = self.line_normal_vector(segment)
+        normal_vector = self.normalize_vector(normal_vector)
+
+        # Define the robot's axes.  Ensure correct directions!
+        axes = {
+            'front': np.array([1, 0]),    # x-axis
+            'rear': np.array([-1, 0]),   # -x-axis
+            'left': np.array([0, 1]),   # y-axis (left side of the robot)
+            'right': np.array([0, -1])     # -y-axis (right side of the robot)  <---THIS IS CRITICAL
+        }
+
+        # Calculate the dot products and negate them
+        dot_products = {
+            direction: -np.dot(normal_vector, axis) for direction, axis in axes.items()
+        }
+
+        # Determine the direction with the maximum dot product
+        best_direction = max(dot_products, key=dot_products.get)
+
+        return best_direction
+
+    def line_length(self, start, end):
+        return np.linalg.norm(np.array(end) - np.array(start))
+
+    def segment_angle(self, start, end):
+      """Calculates the angle of the segment relative to the robot's forward direction (x-axis)."""
+      dx = end[0] - start[0]
+      dy = end[1] - start[1]
+      angle_rad = math.atan2(dy, dx) # angle in radians
+      angle_deg = math.degrees(angle_rad)
+
+      # Adjust the angle to be relative to the robot's forward direction (x-axis)
+      angle_deg = (angle_deg + 360) % 360  # Normalize to [0, 360)
+      return angle_deg
+    def process_line_segments(self):
+        result = {'front': None, 'rear': None, 'left': None, 'right': None}
+        for seg in self.line_segments:
+            direction = self.classify_line(seg)
+            length = self.line_length(seg.start, seg.end)
+            if result[direction] is None or length > result[direction]['length']:
+                result[direction] = {
+                    'distance': seg.radius,
+                    'angle': self.segment_angle(seg.start, seg.end),
+                    'length': length
+                }
+
+        output = []
+        for key in ['front', 'rear', 'left', 'right']:
+            if result[key]:
+                output.append(result[key]['distance'])
             else:
-                side = 'right' if my>0 else 'left'
+                output.append(float('nan'))
 
-            # longest stays
-            prev = self.sides[side]
-            if prev is None or L>prev[2]:
-                self.sides[side] = (seg.radius, seg.angle, L)
-
-        # publish
-        arr = Float32MultiArray()
-        data = []
-        for side in ['front','rear','left','right']:
-            rec = self.sides[side]
-            if rec is None:
-                data += [float('nan'), float('nan')]
+        for key in ['front', 'rear', 'left', 'right']:
+            if result[key]:
+                output.append(result[key]['angle'])
             else:
-                r, θ, _ = rec
-                wall_dir = θ + math.pi/2
-                if side in ('left','right'):
-                    ang = normalize_angle(wall_dir)
-                else:
-                    ang = normalize_angle(wall_dir - math.pi/2)
-                data += [r, math.degrees(ang)]
-        arr.data = data
-        self.pub.publish(arr)
+                output.append(float('nan'))
+        return output
+
+    def run(self):
+        while not rospy.is_shutdown():
+            output = self.process_line_segments()
+            output_msg = Float32MultiArray()
+            output_msg.data = output
+            self.output_pub.publish(output_msg)
+            self.rate.sleep()
 
 if __name__ == '__main__':
-    rospy.init_node('wall_locator', anonymous=False)
-    WallLocator()
-    rospy.spin()
+    try:
+        processor = LineSegmentProcessor()
+        processor.run()
+    except rospy.ROSInterruptException:
+        pass
