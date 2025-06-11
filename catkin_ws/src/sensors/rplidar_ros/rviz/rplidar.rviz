@@ -81,10 +81,10 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: visualization_marker
+      Marker Topic: /line_markers
       Name: Marker
       Namespaces:
-        {}
+        line_extraction: true
       Queue Size: 100
       Value: true
   Enabled: true
