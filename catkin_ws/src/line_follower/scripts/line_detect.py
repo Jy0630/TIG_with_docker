@@ -1,144 +1,156 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import rospy
 import cv2
 import numpy as np
-from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Image
+from std_msgs.msg import String
+from geometry_msgs.msg import Point
+from cv_bridge import CvBridge, CvBridgeError
 
-class LineFollower:
+class LineDetectorFinal:
     def __init__(self):
-        rospy.init_node('line_follower', anonymous=True)
+        rospy.init_node('line_detect', anonymous=True)
+        rospy.loginfo("line_detect node launched")
 
-        # Publisher
-        self.cmd_pub = rospy.Publisher("raw_cmd_vel", Twist, queue_size=1)
-
-        # ———————— 參數設定 ————————
-        # 影像參考線
-        self.horiz_line_y  = rospy.get_param("~horiz_line_y", 240)
-
-        # 位置偏移閾值（像素）
-        self.pos_thresh1   = rospy.get_param("~pos_thresh1", 20)
-        self.pos_thresh2   = rospy.get_param("~pos_thresh2", 120)
-        self.pos_thresh3   = rospy.get_param("~pos_thresh3", 220)
-
-        # 前進速度對應四階段
-        self.forward_nominal     = rospy.get_param("~forward_nominal",0.4)
-        self.forward_stage1      = rospy.get_param("~forward_stage1",0.3)
-        self.forward_stage2      = rospy.get_param("~forward_stage2",0.2)
-        self.forward_stage3      = rospy.get_param("~forward_stage3",0.1)
-
-        # 平移速度對應三階段
-        self.trans_stage1        = rospy.get_param("~trans_stage1",0.1)
-        self.trans_stage2        = rospy.get_param("~trans_stage2",0.2)
-        self.trans_stage3        = rospy.get_param("~trans_stage3",0.3)
-
-        # 角度偏差閾值（度）
-        self.angle_thresh1       = rospy.get_param("~angle_thresh1",30)
-        self.angle_thresh2       = rospy.get_param("~angle_thresh2",50)
-
-        # 旋轉速度對應兩階段
-        self.rot_stage1          = rospy.get_param("~rot_stage1",0.3)
-        self.rot_stage2          = rospy.get_param("~rot_stage2",0.4)
-        # ——————————————————————
-
-        # 相機裝置
-        camera_id = rospy.get_param("~camera_id", "/dev/video5")
+        self.bridge = CvBridge()
+        camera_id = rospy.get_param("~camera_id", "/dev/camera")
         self.cap = cv2.VideoCapture(camera_id)
         if not self.cap.isOpened():
-            rospy.logerr("無法開啟 camera %s" % camera_id)
-            rospy.signal_shutdown("無法開啟 camera")
+            rospy.logerr("camera error %s" % camera_id)
+            rospy.signal_shutdown("camera error")
+            return
+        rospy.loginfo("camera on  %s" % camera_id)
 
-    def process_frame(self, img):
-        # 1. 二值化
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV)
-        cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not cnts:
-            rospy.loginfo("找不到黑線")
-            self.cmd_pub.publish(Twist())
+        self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
+        self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
+        self.debug_image_pub = rospy.Publisher('/line_detect/image_processed', Image, queue_size=1)
+
+        rospy.Timer(rospy.Duration(1.0/30.0), self.process_frame)
+
+    def process_frame(self, event):
+        ret, cv_image = self.cap.read()
+        if not ret:
+            rospy.logwarn("cannot read frame from camera")
             return
 
-        # 2. 最大輪廓
-        c = max(cnts, key=cv2.contourArea)
-        cv2.line(img, (0, self.horiz_line_y), (img.shape[1], self.horiz_line_y), (0,255,0), 2)
+        display_image = cv_image.copy()
+        height, width, _ = display_image.shape
+        
+        bottom_roi = display_image[height // 2:, :]
+        top_roi = display_image[:height // 2, :]
 
-        # 3. 多段擬合交點與角度
-        eps   = 0.02 * cv2.arcLength(c, True)
-        approx= cv2.approxPolyDP(c, eps, True).reshape(-1,2)
-        inter_x, seg_angle = None, None
-        best_d = 1e9
-        cx_img = img.shape[1]//2
+        pixel_deviation, angle_deviation, main_line_center_x = self.detect_line(bottom_roi)
+        intersection_type = self.detect_intersection(top_roi, main_line_center_x)
 
-        for i in range(len(approx)-1):
-            p1, p2 = approx[i], approx[i+1]
-            y1, y2 = p1[1], p2[1]
-            if (y1-self.horiz_line_y)*(y2-self.horiz_line_y) <= 0:
-                x_int = p1[0] if y1==y2 else int(p1[0] + (self.horiz_line_y-y1)*(p2[0]-p1[0])/(y2-y1))
-                d = abs(x_int - cx_img)
-                if d < best_d:
-                    best_d = d
-                    inter_x = x_int
-                    dx, dy = p2[0]-p1[0], p2[1]-p1[1]
-                    ang = np.degrees(np.arctan2(dy, dx))
-                    seg_angle = ang + 180 if ang<0 else ang
+        detection_data = Point(x=pixel_deviation, y=angle_deviation, z=0)
+        self.detection_pub.publish(detection_data)
+        self.intersection_pub.publish(String(data=intersection_type))
 
-        # fitLine fallback
-        if inter_x is None:
-            vx, vy, x0, y0 = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01).flatten()
-            if abs(vy)>1e-3:
-                inter_x   = int(x0 + (self.horiz_line_y-y0)*vx/vy)
-                seg_angle = np.degrees(np.arctan2(vy, vx))
-                if seg_angle<0: seg_angle+=180
-            else:
-                inter_x, seg_angle = cx_img, 90
+        if main_line_center_x is not None:
+            cv2.line(display_image, (main_line_center_x, 0), (main_line_center_x, height), (0, 0, 255), 1)
 
-        cv2.circle(img, (inter_x, self.horiz_line_y), 5, (0,0,255), -1)
+        info_text_line = "PixelDev: {:.1f}, AngleDev: {:.1f}".format(pixel_deviation, angle_deviation)
+        info_text_fork = "Intersection: {}".format(intersection_type)
+        cv2.putText(display_image, info_text_line, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(display_image, info_text_fork, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+        cv2.line(display_image, (0, height // 2), (width, height // 2), (255, 255, 0), 2)
 
-        # 4. 計算誤差
-        pos_err   = inter_x - cx_img       # +: 右偏, -:左偏
-        ang_err   = seg_angle - 90         # +: 線稍右傾, -:左傾
-
-        twist = Twist()
-        # —————————————— 位置矯正階段 ——————————————
-        a = abs(pos_err)
-        if   a <= self.pos_thresh1:
-            # 先做角度矯正
-            twist.linear.x = self.forward_nominal
-            # 角度在第一階段
-            if abs(ang_err) > self.angle_thresh1:
-                if abs(ang_err) <= self.angle_thresh2:
-                    twist.linear.x  = self.forward_stage1
-                    twist.angular.z = -self.rot_stage1 * np.sign(ang_err)
-                else:
-                    twist.linear.x  = self.forward_stage2
-                    twist.angular.z = -self.rot_stage2 * np.sign(ang_err)
-        elif a <= self.pos_thresh2:
-            twist.linear.x = self.forward_stage1
-            twist.linear.y = -self.trans_stage1 * np.sign(pos_err)
-        elif a <= self.pos_thresh3:
-            twist.linear.x = self.forward_stage2
-            twist.linear.y = -self.trans_stage2 * np.sign(pos_err)
-        else:
-            twist.linear.x = self.forward_stage3
-            twist.linear.y = -self.trans_stage3 * np.sign(pos_err)
-        # ——————————————————————————————————————————————————————————
-
-        self.cmd_pub.publish(twist)
-        cv2.imshow("Line Follower", img)
+        cv2.imshow("Processed Frame", display_image)
         cv2.waitKey(1)
 
-    def run(self):
-        rate = rospy.Rate(30)
-        while not rospy.is_shutdown():
-            ret, frame = self.cap.read()
-            if ret:
-                self.process_frame(frame)
+        try:
+            self.debug_image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        except CvBridgeError as e:
+            rospy.logerr(e)
+
+    def detect_line(self, roi):
+        height, width, _ = roi.shape
+        center_x = width // 2
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        _, thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY_INV)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return 0.0, 0.0, None
+
+        largest_contour = max(contours, key=cv2.contourArea)
+        M = cv2.moments(largest_contour)
+        
+        pixel_deviation, angle_deviation, line_center_x = 0.0, 0.0, None
+
+        if M["m00"] > 0:
+            cx = int(M["m10"] / M["m00"])
+            pixel_deviation = cx - center_x
+            line_center_x = cx
+            
+            rect = cv2.minAreaRect(largest_contour)
+            rect_width, rect_height = rect[1]
+            angle = rect[2]
+            if rect_width < rect_height:
+                angle_deviation = angle + 90
             else:
-                rospy.logerr("讀影像失敗")
-            rate.sleep()
+                angle_deviation = angle
+            # Boundary drawing
+            cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
+        
+        return pixel_deviation, angle_deviation, line_center_x
+
+    def detect_intersection(self, roi, main_line_center_x):
+        height, width, _ = roi.shape
+        
+        if main_line_center_x is None:
+            return "STRAIGHT"
+
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        _, thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY_INV)
+
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return "STRAIGHT"
+            
+        largest_contour = max(contours, key=cv2.contourArea)
+        
+        if cv2.contourArea(largest_contour) < 800:
+             return "STRAIGHT"
+
+        # --- 核心修改點: 統一視覺化方法 ---
+        # 仍然計算外接矩形以用於邏輯判斷
+        x, y, w, h = cv2.boundingRect(largest_contour)
+        
+        # boundary drawing
+        cv2.drawContours(roi, [largest_contour], -1, (255, 0, 0), 2)
+        
+        center_line_ref = main_line_center_x
+        margin = 30
+
+        is_left = (x + w - 200) < (center_line_ref - margin)
+        is_right = x + 200 > (center_line_ref + margin)
+
+        if not is_left and not is_right:
+            return "T_JUNCTION"
+        elif is_left and not is_right:
+            return "LEFT_FORK"
+        elif not is_left and is_right:
+            return "RIGHT_FORK"
+        else:
+            return "STRAIGHT"
+
+    def on_shutdown(self):
+        rospy.loginfo("Shutting line_detect_node")
+        self.cap.release()
+        rospy.loginfo("Camera released")
+        cv2.destroyAllWindows()
+        rospy.loginfo("OpenCV windows closed")
 
 if __name__ == '__main__':
     try:
-        LineFollower().run()
+        ld_node = LineDetectorFinal()
+        rospy.on_shutdown(ld_node.on_shutdown)
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
