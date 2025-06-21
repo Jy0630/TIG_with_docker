@@ -29,6 +29,15 @@ def A_to_C_motor():
             velocity_publisher.publish(vel_msg)
             rate.sleep()
 
+    def left_move(duration, speed):
+        vel_msg.linear.y = speed  # Move forward
+        vel_msg.linear.x = 0.0
+        vel_msg.angular.z = 0.0  # No rotation
+        start_time = rospy.Time.now().to_sec()
+        while rospy.Time.now().to_sec() - start_time < duration:
+            velocity_publisher.publish(vel_msg)
+            rate.sleep()   
+
     def turn_left(duration, speed):
         vel_msg.linear.x = 0.0  # No forward movement
         vel_msg.angular.z = -speed  # Turn left
@@ -47,44 +56,104 @@ def A_to_C_motor():
 
     def stop_robot():
         vel_msg.linear.x = 0.0
+        vel_msg.linear.y = 0.0
         vel_msg.angular.z = 0.0
         velocity_publisher.publish(vel_msg)
 
+
+
     def A_to_C():
-        move_forward(7.4, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        move_forward(5, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
         stop_robot()
         sleep(1)                 # 1-second delay
 
-        turn_left(3.09, 0.5)     # Turn left for 3.09 seconds at 0.5 rad/s
+        move_forward(5, -0.25)  # Move forward for 7.4 seconds at 0.25 m/s
         stop_robot()
-        sleep(1)                 # 1-second delay
+        sleep(1)   
 
-        move_forward(10.2, 0.25) # Move forward for 10.2 seconds at 0.25 m/s
+        turn_left(5, 0.5)
         stop_robot()
-        sleep(1)                 # 1-second delay
+        sleep(1)
 
-        turn_right(3.09, 0.5)    # Turn right for 3.09 seconds at 0.5 rad/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # move_forward(5, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1) 
 
-        move_forward(6.1, 0.25)  # Move forward for 6.1 seconds at 0.25 m/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # move_forward(5, 0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
 
-        turn_right(3.09, 0.5)    # Turn right for 3.09 seconds at 0.5 rad/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # move_forward(5, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1) 
 
-        move_forward(10.2, 0.25) # Move forward for 10.2 seconds at 0.25 m/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # left_move(3, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)     
 
-        turn_left(3.09, 0.5)     # Turn left for 3.09 seconds at 0.5 rad/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # left_move(6, -0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)  
 
-        move_forward(10.4, 0.25) # Move forward for 10.4 seconds at 0.25 m/s
-        stop_robot()
+        # left_move(6, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)  
+
+        # left_move(3, -0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)  
+
+        # left_move(3, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)  
+
+        # move_forward(2.5, 0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)        
+
+        # move_forward(2.5, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)      
+
+        # move_forward(2.5, 0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)        
+
+        # move_forward(2.5, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)        
+
+
+        # turn_left(3.09, 0.5)     # Turn left for 3.09 seconds at 0.5 rad/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # move_forward(10.2, 0.25) # Move forward for 10.2 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # turn_right(3.09, 0.5)    # Turn right for 3.09 seconds at 0.5 rad/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # move_forward(6.1, 0.25)  # Move forward for 6.1 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # turn_right(3.09, 0.5)    # Turn right for 3.09 seconds at 0.5 rad/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # move_forward(10.2, 0.25) # Move forward for 10.2 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # turn_left(3.09, 0.5)     # Turn left for 3.09 seconds at 0.5 rad/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
+
+        # move_forward(10.4, 0.25) # Move forward for 10.4 seconds at 0.25 m/s
+        # stop_robot()
 
 
     A_to_C()

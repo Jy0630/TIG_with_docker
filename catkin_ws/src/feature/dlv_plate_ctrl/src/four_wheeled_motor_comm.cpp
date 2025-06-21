@@ -75,8 +75,8 @@ int main(int argc, char **argv)
     front_left_rpm_msg.data *= 0.05;
     rear_left_rpm_msg.data *= 0.05;
     rear_right_rpm_msg.data *= 0.05; 
-    // front_left_rpm_msg.data *= -1;
-    // rear_right_rpm_msg.data *= -1;
+    front_left_rpm_msg.data *= -1;
+    rear_right_rpm_msg.data *= -1;
 
     frontRightRpmPub.publish(front_right_rpm_msg);
     frontLeftRpmPub.publish(front_left_rpm_msg);
@@ -102,15 +102,18 @@ void processMsg(carInfo *car_info)
   double linear_y = car_info->linear_y;
   double angular_z = car_info->angular_z;
 
-  double wheel_radius = 0.05;
-  double axis_length = 0.56;
+  double wheel_radius = 0.075;
+  double axis_length = 0.5325;
 
   double front_right_vel = (linear_x - linear_y - angular_z * axis_length) / wheel_radius *200;
   double front_left_vel = (linear_x + linear_y + angular_z * axis_length) / wheel_radius *200; // Negative due to the direction
   double rear_right_vel = (linear_x + linear_y - angular_z * axis_length) / wheel_radius *200; // Negative due to the direction
   double rear_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius *200;
 
-  double max_vel = 1000.0;
+  front_left_vel *= -1.0;
+  rear_right_vel *= -1.0;
+
+  double max_vel = 3000.0;
 
   front_right_vel = std::clamp(front_right_vel, -max_vel, max_vel);
   front_left_vel = std::clamp(front_left_vel, -max_vel, max_vel);

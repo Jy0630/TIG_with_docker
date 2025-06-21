@@ -9,25 +9,47 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Point
 from cv_bridge import CvBridge, CvBridgeError
 
-class LineDetectorFinal:
+class LineDetectorHybridThreshold:
     def __init__(self):
         rospy.init_node('line_detect', anonymous=True)
-        rospy.loginfo("line_detect node launched")
+        rospy.loginfo("line_detect node started")
 
         self.bridge = CvBridge()
         camera_id = rospy.get_param("~camera_id", "/dev/camera")
         self.cap = cv2.VideoCapture(camera_id)
         if not self.cap.isOpened():
-            rospy.logerr("camera error %s" % camera_id)
-            rospy.signal_shutdown("camera error")
+            rospy.logerr("cannot access camera %s" % camera_id)
+            rospy.signal_shutdown("cannot access camera %s" % camera_id)
             return
-        rospy.loginfo("camera on  %s" % camera_id)
+        rospy.loginfo("launched camera %s" % camera_id)
 
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
         self.debug_image_pub = rospy.Publisher('/line_detect/image_processed', Image, queue_size=1)
 
         rospy.Timer(rospy.Duration(1.0/30.0), self.process_frame)
+
+    def _preprocess_image(self, roi):
+        """
+        Conbine global Otsu thresholding and adaptive thresholding to enhance line detection.
+        """
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+        _, global_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        equalized = clahe.apply(gray)
+        # To adjust params, try different values for blockSize and C, (blockSize must be odd)
+        adaptive_thresh = cv2.adaptiveThreshold(equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                                cv2.THRESH_BINARY_INV, 15, 4) 
+
+        combined_thresh = cv2.bitwise_or(global_thresh, adaptive_thresh)
+
+
+        kernel = np.ones((5, 5), np.uint8)
+        closed_thresh = cv2.morphologyEx(combined_thresh, cv2.MORPH_CLOSE, kernel)
+        
+        return closed_thresh
 
     def process_frame(self, event):
         ret, cv_image = self.cap.read()
@@ -66,26 +88,17 @@ class LineDetectorFinal:
             rospy.logerr(e)
 
     def detect_line(self, roi):
-        height, width, _ = roi.shape
-        center_x = width // 2
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        _, thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY_INV)
+        thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
         if not contours:
             return 0.0, 0.0, None
-
         largest_contour = max(contours, key=cv2.contourArea)
         M = cv2.moments(largest_contour)
-        
         pixel_deviation, angle_deviation, line_center_x = 0.0, 0.0, None
-
         if M["m00"] > 0:
             cx = int(M["m10"] / M["m00"])
-            pixel_deviation = cx - center_x
+            pixel_deviation = cx - (roi.shape[1] // 2)
             line_center_x = cx
-            
             rect = cv2.minAreaRect(largest_contour)
             rect_width, rect_height = rect[1]
             angle = rect[2]
@@ -93,44 +106,25 @@ class LineDetectorFinal:
                 angle_deviation = angle + 90
             else:
                 angle_deviation = angle
-            # Boundary drawing
             cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
-        
         return pixel_deviation, angle_deviation, line_center_x
 
     def detect_intersection(self, roi, main_line_center_x):
-        height, width, _ = roi.shape
-        
         if main_line_center_x is None:
             return "STRAIGHT"
-
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        _, thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY_INV)
-
+        thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
         if not contours:
             return "STRAIGHT"
-            
         largest_contour = max(contours, key=cv2.contourArea)
-        
         if cv2.contourArea(largest_contour) < 800:
              return "STRAIGHT"
-
-        # --- 核心修改點: 統一視覺化方法 ---
-        # 仍然計算外接矩形以用於邏輯判斷
         x, y, w, h = cv2.boundingRect(largest_contour)
-        
-        # boundary drawing
         cv2.drawContours(roi, [largest_contour], -1, (255, 0, 0), 2)
-        
         center_line_ref = main_line_center_x
         margin = 30
-
-        is_left = (x + w - 200) < (center_line_ref - margin)
-        is_right = x + 200 > (center_line_ref + margin)
-
+        is_left = (x + w -200) < (center_line_ref - margin)
+        is_right = x +200> (center_line_ref + margin)
         if not is_left and not is_right:
             return "T_JUNCTION"
         elif is_left and not is_right:
@@ -141,15 +135,15 @@ class LineDetectorFinal:
             return "STRAIGHT"
 
     def on_shutdown(self):
-        rospy.loginfo("Shutting line_detect_node")
+        rospy.loginfo("shutting 'line_detector_node'...")
         self.cap.release()
-        rospy.loginfo("Camera released")
+        rospy.loginfo("camera released")
         cv2.destroyAllWindows()
         rospy.loginfo("OpenCV windows closed")
 
 if __name__ == '__main__':
     try:
-        ld_node = LineDetectorFinal()
+        ld_node = LineDetectorHybridThreshold()
         rospy.on_shutdown(ld_node.on_shutdown)
         rospy.spin()
     except rospy.ROSInterruptException:
