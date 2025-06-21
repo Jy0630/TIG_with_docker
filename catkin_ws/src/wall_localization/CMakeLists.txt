@@ -48,11 +48,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   BoundingBox.msg
-#   BoundingBoxArray.msg
-# )
+add_message_files(
+  FILES
+  WallNavGoal.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -162,7 +161,8 @@ include_directories(
  catkin_install_python(PROGRAMS
   scripts/wall_localizer.py
   scripts/wall_visualize.py
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  scripts/wall_navigator.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark executables for installation
