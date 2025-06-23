@@ -1,6 +1,13 @@
 <launch>
-  <node name="object_detection_publisher" pkg="object_detect" type="ball_detect_pub.py" output="screen">
-    <param name="camera_id" value="/dev/camera" />
-    <param name="yolo_model" value="$(find ball_detect)/scripts/best0703.pt" />
-  </node>
+    <!-- 使用須知：
+        透過來回註解來選擇需要的功能 -->
+
+    <!-- 橘子視覺辨識 -->
+    <node name="orange_detection" pkg="object_detection" type="orange_detection.py" output="screen" />
+
+    <!-- 咖啡指令視覺辨識 -->
+    <!-- <node name="coffee_supply" pkg="object_detection" type="coffee_supply.py" output="screen" /> -->
+
+    <!-- 咖啡視覺辨識 -->
+    <!-- <node name="coffee_detection" pkg="object_detection" type="coffee_detection.py" output="screen" /> -->
 </launch>
