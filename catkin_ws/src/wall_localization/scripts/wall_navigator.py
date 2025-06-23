@@ -41,7 +41,7 @@ class WallNavigator:
         rospy.Subscriber('/wall_nav/goal', WallNavGoal, self.goal_callback)
         rospy.Subscriber('/wall_distances', Float64MultiArray, self.localization_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.cmd_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=10)
 
         # --- Controller Parameters ---
         self.dist_thresholds = [0.2, 0.1, 0.01]; self.dist_speeds = [0.15, 0.08, 0.04]  # m, m/s
@@ -50,9 +50,10 @@ class WallNavigator:
         # --- State Management ---
         self.state = "IDLE"; self.current_goal = None; self.is_active = False
         self.rotation_sub_state = None; self.rotation_target_angles = {}
+        self.alignment_wall = None # 新增對齊牆面變數
         self.odom_target_yaw = 0.0; self.current_yaw = 0.0; self.odom_received = False
 
-        rospy.loginfo("Wall Navigator Node (v3.2) launched successfully. Waiting for goals on /wall_nav/goal...")
+        rospy.loginfo("Wall Navigator Node launched successfully. Waiting for goals on /wall_nav/goal...")
 
     def odom_callback(self, msg):
         orientation_q = msg.pose.pose.orientation
@@ -62,8 +63,8 @@ class WallNavigator:
     
     def goal_callback(self, goal_msg):
         # Intelligent Goal Validation
-        if (goal_msg.control_front and goal_msg.control_rear) or \
-           (goal_msg.control_left and goal_msg.control_right):
+        if (goal_msg.target_front_distance != -1.0 and goal_msg.target_rear_distance != -1.0) or \
+           (goal_msg.target_left_distance != -1.0 and goal_msg.target_right_distance != -1.0):
             rospy.logerr("Mission Denied: Conflicting linear control goals received. Aborting.")
             return
             
@@ -124,27 +125,60 @@ class WallNavigator:
 
         if self.state == "MOVING_TO_POINT":
             active_controls, achieved_controls = 0, 0
+            # --- Simultaneous Alignment Check ---
+            is_alignment_goal = self.current_goal.target_angle == 0.0 and self.current_goal.align_to_wall in ['front', 'rear', 'left', 'right']
+
+            # --- Linear Control ---
             for direction in ['front', 'rear', 'left', 'right']:
-                if getattr(self.current_goal, f'control_{direction}'):
+                target_dist_val = getattr(self.current_goal, f'target_{direction}_distance')
+                if target_dist_val != -1.0:
                     active_controls += 1
                     dist = sensed_data.get(f'{direction}_dist')
                     if not np.isnan(dist):
-                        error = getattr(self.current_goal, f'target_{direction}_distance') - dist
+                        error = target_dist_val - dist
                         speed = get_segmented_speed(error, self.dist_thresholds, self.dist_speeds)
                         if direction in ['front', 'rear']: cmd.linear.x = speed
                         else: cmd.linear.y = speed
                         if speed == 0.0: achieved_controls += 1
             
-            if achieved_controls == active_controls:
-                if self.current_goal.control_angle:
-                    rospy.loginfo("Linear movement finished. State transition to -> PREPARE_ROTATION")
-                    self.predict_and_prepare_rotation(sensed_data, self.current_goal.target_angle)
+            # --- Simultaneous Angular Control (New Logic) ---
+            if is_alignment_goal:
+                alignment_wall = self.current_goal.align_to_wall
+                wall_angle = sensed_data.get(f'{alignment_wall}_angle')
+                if not np.isnan(wall_angle):
+                    error = 0.0 - wall_angle # 目標是0度
+                    cmd.angular.z = get_segmented_speed(error, self.angle_thresholds, self.angle_speeds)
+                    rospy.loginfo_throttle(1, f"Moving and simultaneously aligning to {alignment_wall} wall... Angle Error: {error:.2f}")
+
+            # --- State Transition Check ---
+            if achieved_controls == active_controls and active_controls > 0:
+                if self.current_goal.target_angle != -1.0:
+                    if is_alignment_goal:
+                        self.alignment_wall = self.current_goal.align_to_wall
+                        rospy.loginfo(f"Linear movement finished. State transition to -> ALIGNING_TO_WALL ({self.alignment_wall}) to finalize orientation.")
+                        self.state = "ROTATING_TO_ANGLE"
+                        self.rotation_sub_state = "ALIGNING_TO_WALL"
+                    else:
+                        rospy.loginfo("Linear movement finished. State transition to -> PREPARE_ROTATION")
+                        self.predict_and_prepare_rotation(sensed_data, self.current_goal.target_angle)
                 else:
                     self.state = "GOAL_REACHED"
 
         elif self.state == "ROTATING_TO_ANGLE":
             # --- Rotation Sub-State Machine ---
-            if self.rotation_sub_state in ["ROTATING_SIMPLE", "ROTATING_COMPLEX_FINE"]:
+            if self.rotation_sub_state == "ALIGNING_TO_WALL":
+                wall_angle = sensed_data.get(f'{self.alignment_wall}_angle')
+                if not np.isnan(wall_angle):
+                    error = 0.0 - wall_angle
+                    cmd.angular.z = get_segmented_speed(error, self.angle_thresholds, self.angle_speeds)
+                    rospy.loginfo_throttle(1, f"Aligning to {self.alignment_wall} wall... Target: 0.00, Current: {wall_angle:.2f}, Error: {error:.2f}")
+                    if cmd.angular.z == 0.0:
+                        self.state = "GOAL_REACHED"
+                else:
+                    rospy.logwarn(f"Cannot align: {self.alignment_wall} wall not detected. Mission considered complete.")
+                    self.state = "GOAL_REACHED"
+
+            elif self.rotation_sub_state in ["ROTATING_SIMPLE", "ROTATING_COMPLEX_FINE"]:
                 fine_tune_achieved = False
                 found_ref_wall = False
                 # Prioritize walls for fine-tuning
