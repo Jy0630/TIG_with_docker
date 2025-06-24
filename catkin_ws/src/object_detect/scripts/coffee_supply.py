@@ -5,6 +5,8 @@ import pyrealsense2 as rs
 from ultralytics import YOLO
 import rospy
 from std_msgs.msg import String
+import rospkg
+import os
 
 # =============================================================================
 # Class: RealSenseCamera
@@ -333,7 +335,10 @@ class App:
 
 if __name__ == '__main__':
     try:
-        model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee_supply.pt'
+        rospack = rospkg.RosPack()
+        package_path = rospack.get_path('object_detect')
+        model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
+        # model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee_supply.pt'
         app = App(model_path)
         app.run()
     except rospy.ROSInterruptException:

@@ -157,6 +157,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-noetic-rqt-plot \
     && rm -rf /var/lib/apt/lists/*
 
+# Install pyrealsense2
+RUN pip3 install pyrealsense2
+
+
 WORKDIR /root/catkin_ws
 
 # Copy .rules files from the host into the Docker image
