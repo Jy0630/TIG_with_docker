@@ -77,6 +77,7 @@ int main(int argc, char **argv)
     rear_right_rpm_msg.data *= 0.05; 
     front_left_rpm_msg.data *= -1;
     rear_right_rpm_msg.data *= -1;
+    front_right_rpm_msg.data *= -1;
 
     frontRightRpmPub.publish(front_right_rpm_msg);
     frontLeftRpmPub.publish(front_left_rpm_msg);
@@ -110,6 +111,7 @@ void processMsg(carInfo *car_info)
   double rear_right_vel = (linear_x + linear_y - angular_z * axis_length) / wheel_radius *200; // Negative due to the direction
   double rear_left_vel = (linear_x - linear_y + angular_z * axis_length) / wheel_radius *200;
 
+  front_right_vel *= -1.0;
   front_left_vel *= -1.0;
   rear_right_vel *= -1.0;
 
