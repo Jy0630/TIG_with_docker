@@ -4,7 +4,7 @@ import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
 import rospy
-from std_msgs.msg import str
+from std_msgs.msg import String
 
 # =============================================================================
 # Class: RealSenseCamera
@@ -26,8 +26,8 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         config = rs.config()
         # 啟用 640x480 的深度和彩色影像流，幀率為 30fps
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
         self.pipeline.start(config)
         # 建立對齊物件，將深度圖對齊到彩色圖的座標系
         self.align = rs.align(rs.stream.color)
@@ -209,8 +209,8 @@ class ObjectDetector:
 class CoffeeSupply:
     def __init__(self, detections):
         self.positions = {}
-        self.table_pub = rospy.Publisher("/table", str, queue_size = 1)
-        self.coffee_pub = rospy.Publisher("/coffee", str, queue_size = 1)
+        self.table_pub = rospy.Publisher("/table", String, queue_size = 1)
+        self.coffee_pub = rospy.Publisher("/coffee", String, queue_size = 1)
 
         for det in detections:
             name = det['class_name'].lower()
@@ -333,7 +333,7 @@ class App:
 
 if __name__ == '__main__':
     try:
-        model_path = '/home/allen3483982838/workspace/src/object_detection/scripts/coffee_supply.pt'
+        model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee_supply.pt'
         app = App(model_path)
         app.run()
     except rospy.ROSInterruptException:

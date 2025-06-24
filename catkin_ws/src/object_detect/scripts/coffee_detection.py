@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import time
 import cv2
 import numpy as np
@@ -26,8 +27,8 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         config = rs.config()
         # 啟用 640x480 的深度和彩色影像流，幀率為 30fps
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
         self.pipeline.start(config)
         # 建立對齊物件，將深度圖對齊到彩色圖的座標系
         self.align = rs.align(rs.stream.color)
@@ -206,36 +207,36 @@ class ObjectDetector:
 # Class: CoffeeTake 
 # 目的：把前面包好的全部拿來用
 # =============================================================================
-class CoffeeTake:
-    def __init__(self, detector):
-        self.detector = detector  # 傳入 ObjectDetector 實例
-        self.latest_detections = []  # 存最近一幀的 detections
-        self.sub = rospy.Subscriber('/coffee', String, self.callback)
-        print("CoffeeTake initialized, listening to /coffee.")
+# class CoffeeTake:
+#     def __init__(self, detector):
+#         self.detector = detector  # 傳入 ObjectDetector 實例
+#         self.latest_detections = []  # 存最近一幀的 detections
+#         self.sub = rospy.Subscriber('/coffee', String, self.callback)
+#         print("CoffeeTake initialized, listening to /coffee.")
 
-    def update_detections(self, detections):
-        self.latest_detections = detections
+#     def update_detections(self, detections):
+#         self.latest_detections = detections
 
-    def callback(self, msg):
-        coffee_type = msg.data.strip().lower()  # "white" 或 "black"
-        # 找出對應 class 的物件
-        found = False
-        for det in self.latest_detections:
-            if det['class_name'].lower() == coffee_type:
-                # 取得 bounding box 中心 ux
-                # 你要改動 ObjectDetector.detect()，讓它也回傳 ux
-                ux = det.get('ux', None)
-                if ux is None:
-                    print("No ux info in detection.")
-                    continue
-                if ux > 0:
-                    print(f"{coffee_type} 在右邊")
-                elif ux < 0:
-                    print(f"{coffee_type} 在左邊")
-                found = True
-                break
-        if not found:
-            print(f"畫面中找不到 {coffee_type} 物件")
+#     def callback(self, msg):
+#         coffee_type = msg.data.strip().lower()  # "white" 或 "black"
+#         # 找出對應 class 的物件
+#         found = False
+#         for det in self.latest_detections:
+#             if det['class_name'].lower() == coffee_type:
+#                 # 取得 bounding box 中心 ux
+#                 # 你要改動 ObjectDetector.detect()，讓它也回傳 ux
+#                 ux = det.get('ux', None)
+#                 if ux is None:
+#                     print("No ux info in detection.")
+#                     continue
+#                 if ux > 0:
+#                     print(f"{coffee_type} 在右邊")
+#                 elif ux < 0:
+#                     print(f"{coffee_type} 在左邊")
+#                 found = True
+#                 break
+#         if not found:
+#             print(f"畫面中找不到 {coffee_type} 物件")
 
 
 
@@ -248,7 +249,7 @@ class App:
     def __init__(self, model_path):
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
-        self.coffee_take = CoffeeTake(self.detector)  # 新增
+        # self.coffee_take = CoffeeTake(self.detector)  # 新增
 
     def run(self):
         try:
@@ -259,8 +260,8 @@ class App:
 
                 im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
 
-                # 每次偵測後更新 CoffeeTake 的最新 detection
-                self.coffee_take.update_detections(detections)
+                # # 每次偵測後更新 CoffeeTake 的最新 detection
+                # self.coffee_take.update_detections(detections)
 
                 cv2.imshow('detection', im_out)
 
@@ -281,7 +282,7 @@ class App:
 
 if __name__ == '__main__':
     try:
-        model_path = '/home/allen3483982838/workspace/src/object_detection/scripts/coffee_supply.pt'
+        model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee.pt'
         app = App(model_path)
         app.run()
     except rospy.ROSInterruptException:
