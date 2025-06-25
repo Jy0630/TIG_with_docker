@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64MultiArray
@@ -9,51 +8,45 @@ from nav_msgs.msg import Odometry
 import tf.transformations
 import numpy as np
 import math
-from wall_localization.msg import WallNavGoal
 
+# **核心修改 1: 引入 Service 類型，移除舊的 msg 類型**
+from wall_localization.srv import NavigateByWall, NavigateByWallResponse
 
 def get_segmented_speed(error, thresholds, speeds):
-    """
-    Calculates speed based on error using a multi-level thresholding approach.
-    """
     abs_error = abs(error)
     sign = np.sign(error)
-    if abs_error > thresholds[0]: return sign * speeds[0]    # Fast speed
-    elif abs_error > thresholds[1]: return sign * speeds[1]  # Medium speed
-    elif abs_error > thresholds[2]: return sign * speeds[2]  # Slow speed (fine-tuning)
-    else: return 0.0                                         # Deadband, stop
+    if abs_error > thresholds[0]: return sign * speeds[0]
+    elif abs_error > thresholds[1]: return sign * speeds[1]
+    elif abs_error > thresholds[2]: return sign * speeds[2]
+    else: return 0.0
 
 def normalize_angle(angle_rad):
-    """
-    Normalizes an angle to the range [-pi, pi].
-    """
     return (angle_rad + math.pi) % (2 * math.pi) - math.pi
 
 class WallNavigator:
-    """
-    The main class for the Wall Navigator node. Manages states, subscribers,
-    publishers, and the core navigation logic.
-    """
     def __init__(self):
         rospy.init_node('wall_navigator')
 
         # --- ROS Communication ---
-        rospy.Subscriber('/wall_nav/goal', WallNavGoal, self.goal_callback)
+        # rospy.Subscriber('/wall_nav/goal', WallNavGoal, self.goal_callback)
         rospy.Subscriber('/wall_distances', Float64MultiArray, self.localization_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
         self.cmd_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=10)
 
+        # 建立 Service Server
+        self.nav_service = rospy.Service('navigate_by_wall', NavigateByWall, self.handle_navigation_request)
+
         # --- Controller Parameters ---
-        self.dist_thresholds = [0.2, 0.1, 0.01]; self.dist_speeds = [0.15, 0.08, 0.04]  # m, m/s
-        self.angle_thresholds = [10.0, 5.0, 1.0]; self.angle_speeds = [0.3, 0.15, 0.05]   # degrees, rad/s
+        self.dist_thresholds = [0.2, 0.1, 0.01]; self.dist_speeds = [0.15, 0.08, 0.04]
+        self.angle_thresholds = [10.0, 5.0, 1.0]; self.angle_speeds = [0.3, 0.15, 0.05]
         
         # --- State Management ---
         self.state = "IDLE"; self.current_goal = None; self.is_active = False
         self.rotation_sub_state = None; self.rotation_target_angles = {}
-        self.alignment_wall = None # 新增對齊牆面變數
+        self.alignment_wall = None
         self.odom_target_yaw = 0.0; self.current_yaw = 0.0; self.odom_received = False
 
-        rospy.loginfo("Wall Navigator Node launched successfully. Waiting for goals on /wall_nav/goal...")
+        rospy.loginfo("Wall Navigator Node launched. Waiting for goals on service '/navigate_by_wall'...")
 
     def odom_callback(self, msg):
         orientation_q = msg.pose.pose.orientation
@@ -61,17 +54,39 @@ class WallNavigator:
         _, _, self.current_yaw = tf.transformations.euler_from_quaternion(q_list)
         self.odom_received = True
     
-    def goal_callback(self, goal_msg):
-        # Intelligent Goal Validation
-        if (goal_msg.target_front_distance != -1.0 and goal_msg.target_rear_distance != -1.0) or \
-           (goal_msg.target_left_distance != -1.0 and goal_msg.target_right_distance != -1.0):
-            rospy.logerr("Mission Denied: Conflicting linear control goals received. Aborting.")
-            return
-            
-        self.current_goal = goal_msg
+    # 建立 Service 處理函式，取代 goal_callback
+    def handle_navigation_request(self, req):
+        """
+        這個函式是新的進入點，當 main_control 呼叫服務時，此函式會被觸發。
+        """
+        # 1. 驗證目標的合法性
+        if (req.target_front_distance != -1.0 and req.target_rear_distance != -1.0) or \
+           (req.target_left_distance != -1.0 and req.target_right_distance != -1.0):
+            rospy.logerr("Mission Denied: Conflicting linear goals (e.g., controlling front and rear simultaneously).")
+            return NavigateByWallResponse(success=False, message="Conflicting linear goals.")
+        
+        rospy.loginfo("New mission received via service. State transition to -> MOVING_TO_POINT")
+        
+        # 2. 設定目標並啟動狀態機
+        self.current_goal = req
         self.is_active = True
         self.state = "MOVING_TO_POINT"
-        rospy.loginfo("New mission received. State transition to -> MOVING_TO_POINT")
+
+        # 3. 阻塞式等待：等待導航任務完成
+        # localization_callback 會在背景中執行，並在任務完成後將 self.is_active 設為 False
+        rate = rospy.Rate(10) # 10 Hz
+        while self.is_active and not rospy.is_shutdown():
+            rate.sleep()
+
+        # 4. 任務完成，回傳結果
+        if self.state == "IDLE": # 成功完成後，狀態會被設為 IDLE
+            rospy.loginfo("Mission Accomplished! Sending success response.")
+            return NavigateByWallResponse(success=True, message="Navigation goal reached successfully.")
+        else:
+            rospy.logerr("Mission Failed or Interrupted. Sending failure response.")
+            # Stop robot
+            self.cmd_pub.publish(Twist())
+            return NavigateByWallResponse(success=False, message="Navigation failed or was interrupted.")
 
     def predict_and_prepare_rotation(self, sensed_data, angle_offset_deg):
         rospy.loginfo(f"State: PREPARE_ROTATION. Preparing to rotate by {angle_offset_deg} degrees.")
@@ -115,14 +130,18 @@ class WallNavigator:
         
         self.state = "ROTATING_TO_ANGLE"
 
+
     def localization_callback(self, msg):
-        if not self.is_active: return
+        # 這個函式是主要的控制迴圈，只有在 is_active 為 True 時才執行
+        if not self.is_active: 
+            return
+            
         sensed_data = {
             'front_dist': msg.data[0], 'rear_dist': msg.data[1], 'left_dist': msg.data[2], 'right_dist': msg.data[3],
             'front_angle': msg.data[4], 'rear_angle': msg.data[5], 'left_angle': msg.data[6], 'right_angle': msg.data[7]
         }
         cmd = Twist()
-
+        
         if self.state == "MOVING_TO_POINT":
             active_controls, achieved_controls = 0, 0
             # --- Simultaneous Alignment Check ---
@@ -137,6 +156,7 @@ class WallNavigator:
                     if not np.isnan(dist):
                         error = target_dist_val - dist
                         speed = get_segmented_speed(error, self.dist_thresholds, self.dist_speeds)
+                        # 後退和右移負速度
                         if direction == 'front': cmd.linear.x = speed
                         elif direction == 'rear': cmd.linear.x = -speed 
                         elif direction == 'left': cmd.linear.y = speed
@@ -165,7 +185,7 @@ class WallNavigator:
                         self.predict_and_prepare_rotation(sensed_data, self.current_goal.target_angle)
                 else:
                     self.state = "GOAL_REACHED"
-
+        
         elif self.state == "ROTATING_TO_ANGLE":
             # --- Rotation Sub-State Machine ---
             if self.rotation_sub_state == "ALIGNING_TO_WALL":
@@ -208,13 +228,17 @@ class WallNavigator:
                 if abs(np.degrees(error_rad)) < self.angle_thresholds[1]:
                     rospy.loginfo("Coarse rotation by odometry finished. State transition to -> ROTATING_COMPLEX_FINE")
                     self.rotation_sub_state = "ROTATING_COMPLEX_FINE"
-            
+        
         elif self.state == "GOAL_REACHED":
-            rospy.loginfo("Mission Accomplished! State transition to -> IDLE")
-            self.is_active = False; self.state = "IDLE"
+            # 任務完成，重置狀態並解除阻塞
+            rospy.loginfo("Goal Reached! Resetting state to IDLE.")
+            self.is_active = False #handle_navigation_request 中的 while 迴圈結束
+            self.state = "IDLE"
+            self.current_goal = None
+            # Stop the robot
+            cmd = Twist()
 
         self.cmd_pub.publish(cmd)
-
 
 if __name__ == '__main__':
     try:
