@@ -8,9 +8,7 @@ from nav_msgs.msg import Odometry
 import tf.transformations
 import numpy as np
 import math
-
-# **核心修改 1: 引入 Service 類型，移除舊的 msg 類型**
-from wall_localization.srv import NavigateByWall, NavigateByWallResponse
+from wall_localization.srv import SetWallNavigation, SetWallNavigationResponse
 
 def get_segmented_speed(error, thresholds, speeds):
     abs_error = abs(error)
@@ -34,7 +32,7 @@ class WallNavigator:
         self.cmd_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=10)
 
         # 建立 Service Server
-        self.nav_service = rospy.Service('navigate_by_wall', NavigateByWall, self.handle_navigation_request)
+        self.nav_service = rospy.Service('navigate_by_wall', SetWallNavigation, self.handle_navigation_request)
 
         # --- Controller Parameters ---
         self.dist_thresholds = [0.2, 0.1, 0.01]; self.dist_speeds = [0.15, 0.08, 0.04]
@@ -59,20 +57,20 @@ class WallNavigator:
         """
         這個函式是新的進入點，當 main_control 呼叫服務時，此函式會被觸發。
         """
-        # 1. 驗證目標的合法性
+        # Verify the target's validity
         if (req.target_front_distance != -1.0 and req.target_rear_distance != -1.0) or \
            (req.target_left_distance != -1.0 and req.target_right_distance != -1.0):
             rospy.logerr("Mission Denied: Conflicting linear goals (e.g., controlling front and rear simultaneously).")
-            return NavigateByWallResponse(success=False, message="Conflicting linear goals.")
+            return SetWallNavigationResponse(success=False, message="Conflicting linear goals.")
         
         rospy.loginfo("New mission received via service. State transition to -> MOVING_TO_POINT")
         
-        # 2. 設定目標並啟動狀態機
+        # Set initial state and parameters
         self.current_goal = req
         self.is_active = True
         self.state = "MOVING_TO_POINT"
 
-        # 3. 阻塞式等待：等待導航任務完成
+        # wait till navigation mission completes
         # localization_callback 會在背景中執行，並在任務完成後將 self.is_active 設為 False
         rate = rospy.Rate(10) # 10 Hz
         while self.is_active and not rospy.is_shutdown():
@@ -81,12 +79,12 @@ class WallNavigator:
         # 4. 任務完成，回傳結果
         if self.state == "IDLE": # 成功完成後，狀態會被設為 IDLE
             rospy.loginfo("Mission Accomplished! Sending success response.")
-            return NavigateByWallResponse(success=True, message="Navigation goal reached successfully.")
+            return SetWallNavigationResponse(success=True, message="Navigation goal reached successfully.")
         else:
             rospy.logerr("Mission Failed or Interrupted. Sending failure response.")
             # Stop robot
             self.cmd_pub.publish(Twist())
-            return NavigateByWallResponse(success=False, message="Navigation failed or was interrupted.")
+            return SetWallNavigationResponse(success=False, message="Navigation failed or was interrupted.")
 
     def predict_and_prepare_rotation(self, sensed_data, angle_offset_deg):
         rospy.loginfo(f"State: PREPARE_ROTATION. Preparing to rotate by {angle_offset_deg} degrees.")
@@ -132,7 +130,7 @@ class WallNavigator:
 
 
     def localization_callback(self, msg):
-        # 這個函式是主要的控制迴圈，只有在 is_active 為 True 時才執行
+        # Run when (is_active == True) and new data arrives
         if not self.is_active: 
             return
             
@@ -156,11 +154,11 @@ class WallNavigator:
                     if not np.isnan(dist):
                         error = target_dist_val - dist
                         speed = get_segmented_speed(error, self.dist_thresholds, self.dist_speeds)
-                        # 後退和右移負速度
-                        if direction == 'front': cmd.linear.x = speed
-                        elif direction == 'rear': cmd.linear.x = -speed 
-                        elif direction == 'left': cmd.linear.y = speed
-                        else: cmd.linear.y = -speed
+
+                        if direction == 'front': cmd.linear.x = -speed
+                        elif direction == 'rear': cmd.linear.x = speed 
+                        elif direction == 'left': cmd.linear.y = -speed
+                        else: cmd.linear.y = speed
                         if speed == 0.0: achieved_controls += 1
             
             # --- Simultaneous Angular Control (New Logic) ---

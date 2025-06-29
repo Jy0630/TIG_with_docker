@@ -106,9 +106,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- LIBRARIES wall_localization
- CATKIN_DEPENDS rospy roscpp std_msgs message_runtime
- DEPENDS system_lib
+#  LIBRARIES wall_localization
+#  CATKIN_DEPENDS rospy roscpp std_msgs message_runtime
+#  DEPENDS system_lib
 )
 
 ###########
@@ -165,6 +165,7 @@ include_directories(
   scripts/wall_localizer.py
   scripts/wall_visualize.py
   scripts/wall_navigator.py
+  scripts/wall_navigator_srv.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

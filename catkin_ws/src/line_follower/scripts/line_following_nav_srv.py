@@ -9,8 +9,8 @@ from line_follower.srv import SetLineFollower, SetLineFollowerResponse
 
 class MecanumController:
     def __init__(self):
-        rospy.init_node('mecanum_control_node', anonymous=True)
-        rospy.loginfo("'mecanum_control_node' (Service Server) started")
+        rospy.init_node('line_following_node', anonymous=True)
+        rospy.loginfo("'line_following_node' (Service Server) started")
         
         self.cmd_vel_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=1)
         
@@ -134,4 +134,4 @@ if __name__ == '__main__':
         mc = MecanumController()
         rospy.spin()  # 保持節點運行，以便它可以持續接收服務請求
     except rospy.ROSInterruptException:
-        rospy.loginfo("mecanum_control_node shutted down")
+        rospy.loginfo("line_following_node shutted down")

@@ -1,0 +1,170 @@
+
+
+#include <Encoder.h>
+#include <ros.h>
+#include <hello/SetHeight.h>
+#include <math.h>
+
+// --- 硬體腳位定義 ---
+#define ENA 9
+#define IN1 7
+#define IN2 8
+#define ENCODER_A 3
+#define ENCODER_B 2
+
+// --- 物理參數 ---
+const float RADIUS = 2.1;        
+const float PULSE_PER_REV = 3264.0; 
+const float DEG_PER_PULSE = 360.0 / PULSE_PER_REV;
+
+
+// 下降最大速度限制 (PWM值, 0-255)。值越小，最大下降速度越慢。
+const int MAX_PWM_DOWN = 120;
+
+// 高度區間邊界定義 (單位: 公分 cm)
+const double H1_CM = 30.0;
+const double H2_CM = 60.0;
+
+// 低區間 (負載輕)
+double Kp_up_low = 2.0, Ki_up_low = 1.5, Kd_up_low = 1.0;
+// 中區間 (負載中)
+double Kp_up_mid = 2.5, Ki_up_mid = 2.0, Kd_up_mid = 1.2;
+// 高區間 (負載重)
+double Kp_up_high = 3.0, Ki_up_high = 2.5, Kd_up_high = 1.5;
+
+// 高區間
+double Kp_down_high = 0.8, Ki_down_high = 0.4, Kd_down_high = 1.2;
+// 中區間
+double Kp_down_mid = 0.6, Ki_down_mid = 0.3, Kd_down_mid = 1.0;
+// 低區間
+double Kp_down_low = 0.5, Ki_down_low = 0.2, Kd_down_low = 0.8;
+
+
+const double H1_ANGLE = (H1_CM / RADIUS) * (180.0 / M_PI);
+const double H2_ANGLE = (H2_CM / RADIUS) * (180.0 / M_PI);
+
+// --- 控制變數 ---
+double targetAngle = 0.0, currentAngle = 0.0;
+double error = 0.0, last_error = 0.0, error_sum = 0.0, error_diff = 0.0;
+double output_pwm = 0.0;
+unsigned long last_pid_time = 0;
+
+// --- 系統物件 ---
+Encoder myEnc(ENCODER_A, ENCODER_B);
+ros::NodeHandle nh;
+
+// 高度轉換為角度
+double heightToAngle(float height_cm) {
+  double rad = height_cm / RADIUS;
+  const double max_rad = 7 * 2 * M_PI; // 限制最大7圈
+  if (rad > max_rad) rad = max_rad;
+  if (rad < -max_rad) rad = -max_rad;
+  return rad * 180.0 / M_PI;
+}
+
+// ROS Service Callback: 接收新目標
+bool handleSetHeight(hello::SetHeight::Request &req, hello::SetHeight::Response &res) {
+  targetAngle = heightToAngle(req.height);
+  error_sum = 0.0; // 重置積分項，為新任務做準備
+  nh.loginfo("收到新目標角度: %.2f 度", targetAngle);
+  res.success = true;
+  return true;
+}
+ros::ServiceServer<hello::SetHeight::Request, hello::SetHeight::Response> server("set_height", &handleSetHeight);
+
+// 馬達驅動函式，包含主動煞車
+void setMotorPWM(int pwm) {
+  const int BRAKE_THRESHOLD = 10;
+  if (abs(pwm) <= BRAKE_THRESHOLD) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, HIGH); // 主動煞車
+    analogWrite(ENA, 0);
+  } else if (pwm > 0) { // 上升 (對應程式碼邏輯)
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    analogWrite(ENA, pwm);
+  } else { // 下降 (對應程式碼邏輯)
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    analogWrite(ENA, -pwm);
+  }
+}
+
+// PID控制器
+void PIDcontrol() {
+  unsigned long now = millis();
+  unsigned long time_change = (now - last_pid_time);
+
+  if (time_change >= 10) {
+    double dt = time_change / 1000.0;
+    last_pid_time = now;
+
+    currentAngle = myEnc.read() * DEG_PER_PULSE;
+    error = targetAngle - currentAngle;
+
+    double currentKp, currentKi, currentKd;
+    if (error > 0) { // 判斷為上升
+      if (currentAngle < H1_ANGLE) {         // 低區間
+        currentKp = Kp_up_low; currentKi = Ki_up_low; currentKd = Kd_up_low;
+      } else if (currentAngle < H2_ANGLE) {  // 中區間
+        currentKp = Kp_up_mid; currentKi = Ki_up_mid; currentKd = Kd_up_mid;
+      } else {                               // 高區間
+        currentKp = Kp_up_high; currentKi = Ki_up_high; currentKd = Kd_up_high;
+      }
+    } else { // 判斷為下降或保持
+      if (currentAngle > H2_ANGLE) {         // 高區間
+        currentKp = Kp_down_high; currentKi = Ki_down_high; currentKd = Kd_down_high;
+      } else if (currentAngle > H1_ANGLE) {  // 中區間
+        currentKp = Kp_down_mid; currentKi = Ki_down_mid; currentKd = Kd_down_mid;
+      } else {                               // 低區間
+        currentKp = Kp_down_low; currentKi = Ki_down_low; currentKd = Kd_down_low;
+      }
+    }
+    
+    // PID 計算
+    error_sum += error * dt;
+    const double INTEGRAL_WINDUP_LIMIT = 150.0;
+    if (error_sum > INTEGRAL_WINDUP_LIMIT) error_sum = INTEGRAL_WINDUP_LIMIT;
+    if (error_sum < -INTEGRAL_WINDUP_LIMIT) error_sum = -INTEGRAL_WINDUP_LIMIT;
+    error_diff = (error - last_error) / dt;
+    last_error = error;
+    output_pwm = currentKp * error + currentKi * error_sum + currentKd * error_diff;
+
+    // 下降速度限制
+    if (output_pwm < 0) {
+      if (output_pwm < -MAX_PWM_DOWN) {
+        output_pwm = -MAX_PWM_DOWN;
+      }
+    }
+
+    // 智慧停止條件
+    const float STOP_ERROR_THRESHOLD = 1.0;
+    const float STOP_VELOCITY_PROXY = 5.0;
+    if (abs(error) < STOP_ERROR_THRESHOLD && abs(error_diff) < STOP_VELOCITY_PROXY) {
+      output_pwm = 0;
+      error_sum = 0;
+    }
+    
+    if (output_pwm > 255.0) output_pwm = 255.0;
+    if (output_pwm < -255.0) output_pwm = -255.0;
+
+    setMotorPWM((int)output_pwm);
+  }
+}
+
+void setup() {
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  myEnc.write(0);
+
+  nh.initNode();
+  nh.advertiseService(server);
+  last_pid_time = millis();
+  nh.loginfo("DC_motor node launched");
+}
+
+void loop() {
+  nh.spinOnce();
+  PIDcontrol();
+}

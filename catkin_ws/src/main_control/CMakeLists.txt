@@ -12,7 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   dlv_plate_ctrl
-
+  wall_localization
+  line_follower
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,8 +107,8 @@ generate_messages(
 catkin_package(
   # INCLUDE_DIRS include
   # LIBRARIES main_control
-  CATKIN_DEPENDS rospy std_srvs message_runtime
-#  DEPENDS system_lib
+  # CATKIN_DEPENDS rospy std_srvs message_runtime line_follower wall_localization
+  # DEPENDS system_lib
 )
 
 ###########
@@ -162,14 +163,10 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
 #   src/mainA.py
-  src/reset_mainC.py
-  src/reset_mainD.py
-  src/A_to_D_nav.py
   src/A_to_C_motor.py
   src/control.py
-  src/A_take_ball_1.py
-  src/A_take_ball_2.py
   src/s_shape.py
+  scripts/main_control.py
 
 
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
