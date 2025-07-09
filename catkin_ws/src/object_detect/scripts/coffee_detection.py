@@ -8,6 +8,8 @@ import rospy
 from std_msgs.msg import Float32, String 
 import rospkg
 import os
+import json
+from object_detect.srv import DetectObjects, DetectObjectsResponse
 
 # =============================================================================
 # Class: RealSenseCamera
@@ -247,51 +249,88 @@ class ObjectDetector:
 # 目的：把前面包好的全部拿來用
 # =============================================================================
 
-class App:
+# class App:
+#     def __init__(self, model_path):
+#         self.camera = RealSenseCamera()
+#         self.detector = ObjectDetector(model_path)
+#         # self.coffee_take = CoffeeTake(self.detector)  # 新增
+
+#     def run(self):
+#         try:
+#             while not rospy.is_shutdown():
+#                 depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
+#                 if depth_intrin is None:
+#                     continue
+
+#                 im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
+
+#                 # # 每次偵測後更新 CoffeeTake 的最新 detection
+#                 # self.coffee_take.update_detections(detections)
+
+#                 cv2.imshow('detection', im_out)
+
+#                 if detections:
+#                     print("--- Detected Objects ---")
+#                     for det in detections:
+#                         print(f"[{det['class_name']}] conf={det['conf']} XYZ={det['xyz']}")
+
+#                 key = cv2.waitKey(1)
+#                 if key & 0xFF == ord('q') or key == 27:
+#                     print("Exiting...")
+#                     break
+#         except KeyboardInterrupt:
+#             print("Interrupted by user. Exiting...")
+#         finally:
+#             self.camera.stop()
+#             cv2.destroyAllWindows()
+
+#service
+class ObjectDetectionServiceNode:
     def __init__(self, model_path):
+
+        #初始化節點名稱
+        rospy.init_node("object_detection_service_node")
+
+        #前面的打包整理
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
-        # self.coffee_take = CoffeeTake(self.detector)  # 新增
+        
+        #service
+        self.srv = rospy.Service('detect_objects_srv', DetectObjects, self.handle_detect_objects)
+        rospy.loginfo("Object Detection Service Ready.")
 
-    def run(self):
-        try:
-            while not rospy.is_shutdown():
-                depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
-                if depth_intrin is None:
-                    continue
+    def handle_detect_objects(self, req):
+        depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
+        if depth_intrin is None:
+            rospy.logwarn("No valid frames from camera.")
+            return DetectObjectsResponse(detection_result_json=json.dumps([]))
 
-                im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
+        im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
 
-                # # 每次偵測後更新 CoffeeTake 的最新 detection
-                # self.coffee_take.update_detections(detections)
+        cv2.imshow('detection', im_out)
+        cv2.waitKey(1)
 
-                cv2.imshow('detection', im_out)
+        return DetectObjectsResponse(detection_result_json=json.dumps(detections))
 
-                if detections:
-                    print("--- Detected Objects ---")
-                    for det in detections:
-                        print(f"[{det['class_name']}] conf={det['conf']} XYZ={det['xyz']}")
-
-                key = cv2.waitKey(1)
-                if key & 0xFF == ord('q') or key == 27:
-                    print("Exiting...")
-                    break
-        except KeyboardInterrupt:
-            print("Interrupted by user. Exiting...")
-        finally:
-            self.camera.stop()
-            cv2.destroyAllWindows()
+    def spin(self):
+        rospy.spin()
+        self.camera.stop()
+        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     try:
+        # 取得模型路徑
         rospack = rospkg.RosPack()
-        package_path = rospack.get_path('object_detect')
+        package_path = rospack.get_path('object_detect')  # 改成你的 package 名稱
         model_path = os.path.join(package_path, 'scripts', 'coffee.pt')
-        # model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee.pt'
-        app = App(model_path)
-        app.run()
+
+        # 啟動 ROS Service 節點
+        node = ObjectDetectionServiceNode(model_path)
+        node.spin()
+
     except rospy.ROSInterruptException:
         print("ROS node interrupted.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
         
