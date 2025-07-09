@@ -93,36 +93,58 @@ class MainController:
             return False
 
 
-    def detect_and_navigate_to_orange(self):
-        """Detect orange and navigate to the detected goal."""
+    def detect_and_navigate_to_orange(self, search_timeout_sec=120.0):
+        """
+        Detect orange and navigate to the detected goal.
+        This function will continuously call the detection service until it succeeds or a timeout is reached.
+        """
         rospy.loginfo("Executing task: Detect and Navigate to Orange...")
         
-        # 1. Orange detect service
-        try:
-            rospy.loginfo("Calling orange detection service...")
-            detect_response = self.orange_detect_client()
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Service call to 'detect_orange_goal' failed: {e}")
-            return False
-
-        if not detect_response.success:
-            rospy.logwarn("Orange detection failed. Skipping navigation.")
-            return False
-
-        rospy.loginfo("Orange goal found! Translating coordinates to navigation commands.")
+        start_time = rospy.Time.now()
+        detect_response = None
         
-        # 2. Translate the detected coordinates into navigation commands
+        # 1. Loop until an orange pair is found or the timeout is exceeded
+        while not rospy.is_shutdown():
+            # Check for timeout to prevent getting stuck indefinitely
+            if (rospy.Time.now() - start_time).to_sec() > search_timeout_sec:
+                rospy.logerr(f"Search timed out after {search_timeout_sec}s. Could not find orange goal.")
+                return False
+
+            rospy.loginfo_throttle(5, "Continuously searching for orange pair... (This message appears every 5s)")
+            
+            try:
+                # Call the detection service
+                response = self.orange_detect_client()
+                if response.success:
+                    rospy.loginfo("Orange goal found! Proceeding to navigation.")
+                    detect_response = response
+                    break  # Exit the loop on success
+                else:
+                    # If not found, wait a bit before retrying to avoid spamming the service
+                    rospy.sleep(1.0)
+            except rospy.ServiceException as e:
+                rospy.logerr(f"Service call to 'detect_orange_goal' failed: {e}. Retrying in 2 seconds...")
+                rospy.sleep(2.0)
+
+        # This part is only reached if the loop was broken (i.e., success)
+        if detect_response is None or not detect_response.success:
+            rospy.logerr("Exited search loop without a successful detection.")
+            return False
+
+        rospy.loginfo("Translating coordinates to navigation commands.")
+        
+        # 2. Translate coordinates to navigation commands
         target_front = detect_response.target_y
         target_right = detect_response.target_x
         target_angle_deg = np.degrees(detect_response.target_final_yaw)
         
         # 3. Navigate to the target point
         rospy.loginfo(f"Step 1: Navigating to point (front: {target_front:.2f}m, right: {target_right:.2f}m).")
-        if not self.navigate_by_wall(front=target_front, right=target_right, angle=0.0, align_wall="right"):
+        if not self.navigate_by_wall(front=target_front, right=target_right):
             rospy.logerr("Failed to navigate to the target point.")
             return False
 
-        # 4. Turning to the final angle
+        # 4. Rotate to the final angle
         rospy.loginfo(f"Step 2: Rotating to final angle ({target_angle_deg:.2f} degrees).")
         if not self.navigate_by_wall(angle=target_angle_deg):
             rospy.logerr("Failed to rotate to the final angle.")
@@ -131,13 +153,12 @@ class MainController:
         rospy.loginfo("Successfully navigated to the orange goal!")
         return True
 
-        
     #咖啡偵測coffee detect用來判斷菜單內容
     def detect_objects(self):
         try:
-                resp = self.detect_client()
-                detections = json.loads(resp.detection_result_json)
-                return detections
+            resp = self.detect_client()
+            detections = json.loads(resp.detection_result_json)
+            return detections
         except rospy.ServiceException as e:
                 rospy.logerr(f"Object detection service call failed: {e}")
                 return []
@@ -145,15 +166,15 @@ class MainController:
     #coffeesupply 根據物件偵測結果（位置與名稱）判斷咖啡要放在哪一張桌子上，然後發佈 ROS topic 指令給其他控制單元執行
     def detect_coffee(self):
         try:
-                resp = self.coffee_client()  # 呼叫 detect_coffee_srv (無參數)
-                if resp.success:
-                    return {
-                        'target_name': resp.target_name,
-                        'target_xyz': list(resp.target_xyz)
-                    }
-                else:
-                    rospy.loginfo("Coffee detection succeeded, but no valid target matched.")
-                    return None
+            resp = self.coffee_client()  # 呼叫 detect_coffee_srv (無參數)
+            if resp.success:
+                return {
+                    'target_name': resp.target_name,
+                    'target_xyz': list(resp.target_xyz)
+                }
+            else:
+                rospy.loginfo("Coffee detection succeeded, but no valid target matched.")
+                return None
         except rospy.ServiceException as e:
             rospy.logerr(f"Coffee detection service call failed: {e}")
             return None
