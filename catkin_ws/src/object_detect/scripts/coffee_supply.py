@@ -7,7 +7,7 @@ import rospy
 from std_msgs.msg import String
 import rospkg
 import os
-
+from object_detect.srv import DetectCoffee, DetectCoffeeResponse
 # =============================================================================
 # Class: RealSenseCamera
 # 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
@@ -300,38 +300,86 @@ class CoffeeSupply:
 # 目的：把前面包好的全部拿來用
 # =============================================================================
 
-class App:
+# class App:
+#     def __init__(self, model_path):
+#         self.camera = RealSenseCamera()
+#         self.detector = ObjectDetector(model_path)
+
+#     def run(self):
+#         try:
+#             while not rospy.is_shutdown():
+#                 depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
+#                 if depth_intrin is None:
+#                     continue
+#                 im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
+#                 cv2.imshow('detection', im_out)
+#                 # print("偵測結果：", detections)  # debug
+#                 if detections:
+#                     coffee = CoffeeSupply(detections)
+#                     coffee.coffee_command()  # <--- 這行就是整合點
+#                     # rels = coffee.get_all_relative()
+#                     # if rels and 'target_name' in rels:
+#                     #     print(f"Home 到 {rels['target_name']} 的相對位置: {rels['home_to_target']}")
+#                     #     print(f"Tree 到 {rels['target_name']} 的相對位置: {rels['tree_to_target']}")
+#                     # else:
+#                     #     print("找不到 black 或 white 目標，無法計算相對位置。")
+#                 key = cv2.waitKey(1)
+#                 if key & 0xFF == ord('q') or key == 27:
+#                     print("Exiting...")
+#                     break
+#         except KeyboardInterrupt:
+#             print("Interrupted by user. Exiting...")
+#         finally:
+#             self.camera.stop()
+#             cv2.destroyAllWindows()
+
+class CoffeeSupplyDetectionNode:
     def __init__(self, model_path):
+        #初始化節點
+        rospy.init_node("coffee_supply_detection_node")
+
+        #結合前面
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
+        self.table_pub = rospy.Publisher("/table", String, queue_size=1)
+        self.coffee_pub = rospy.Publisher("/coffee", String, queue_size=1)
 
-    def run(self):
-        try:
-            while not rospy.is_shutdown():
-                depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
-                if depth_intrin is None:
-                    continue
-                im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
-                cv2.imshow('detection', im_out)
-                # print("偵測結果：", detections)  # debug
-                if detections:
-                    coffee = CoffeeSupply(detections)
-                    coffee.coffee_command()  # <--- 這行就是整合點
-                    # rels = coffee.get_all_relative()
-                    # if rels and 'target_name' in rels:
-                    #     print(f"Home 到 {rels['target_name']} 的相對位置: {rels['home_to_target']}")
-                    #     print(f"Tree 到 {rels['target_name']} 的相對位置: {rels['tree_to_target']}")
-                    # else:
-                    #     print("找不到 black 或 white 目標，無法計算相對位置。")
-                key = cv2.waitKey(1)
-                if key & 0xFF == ord('q') or key == 27:
-                    print("Exiting...")
-                    break
-        except KeyboardInterrupt:
-            print("Interrupted by user. Exiting...")
-        finally:
-            self.camera.stop()
-            cv2.destroyAllWindows()
+        #rosservice
+        self.service = rospy.Service('detect_coffee_srv', DetectCoffee, self.handle_detect_coffee)
+        rospy.loginfo("Coffee Supply Detection Service Ready.")
+
+    def handle_detect_coffee(self, req):
+        depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
+        if depth_intrin is None:
+            rospy.logwarn("No frames from camera.")
+            return DetectCoffeeResponse(success=False, target_name="", target_xyz=[])
+        im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
+
+        if not detections:
+            rospy.loginfo("No detections.")
+            return DetectCoffeeResponse(success=False, target_name="", target_xyz=[])
+
+        coffee = CoffeeSupply(detections)
+        success = coffee.coffee_command()
+        rels = coffee.get_all_relative()
+        if rels and 'target_name' in rels:
+            target = rels['target_name']
+            target_xyz = rels['home_to_target']
+        else:
+            target = ""
+            target_xyz = []
+
+        # 可選：顯示影像結果視窗
+        cv2.imshow('detection', im_out)
+        cv2.waitKey(1)
+
+        return DetectCoffeeResponse(success=success, target_name=target, target_xyz=target_xyz if target_xyz else [])
+    
+    def spin(self):
+        rospy.spin()
+        self.camera.stop()
+        cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     try:
@@ -339,8 +387,9 @@ if __name__ == '__main__':
         package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
         # model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee_supply.pt'
-        app = App(model_path)
-        app.run()
+        
+        node = CoffeeSupplyDetectionNode(model_path)
+        node.spin()
     except rospy.ROSInterruptException:
         print("ROS node interrupted.")
     except Exception as e:

@@ -5,7 +5,8 @@ import rospy
 from std_msgs.msg import String
 from line_follower.srv import SetLineFollower
 from wall_localization.srv import SetWallNavigation
-
+from  object_detect.srv import DetectObjects
+from object_detect.srv import  DetectCoffee
 class MainController:
 
     def __init__(self):
@@ -25,6 +26,13 @@ class MainController:
         self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
         rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
 
+        #object detection
+        rospy.wait_for_service('detect_objects_srv')
+        self.detect_client = rospy.ServiceProxy('detect_objects_srv', DetectObjects)
+
+        #coffeesupply
+        rospy.wait_for_service('detect_coffee_srv')
+        self.detect_client = rospy.ServiceProxy('detect_coffee_srv',DetectCoffee)
 
         self.run_competition_flow()
 
@@ -76,7 +84,32 @@ class MainController:
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
             return False
-
+        
+    #咖啡偵測coffee detect用來判斷菜單內容
+    def detect_objects(self):
+        try:
+                resp = self.detect_client()
+                detections = json.loads(resp.detection_result_json)
+                return detections
+        except rospy.ServiceException as e:
+                rospy.logerr(f"Object detection service call failed: {e}")
+                return []
+        
+    #coffeesupply 根據物件偵測結果（位置與名稱）判斷咖啡要放在哪一張桌子上，然後發佈 ROS topic 指令給其他控制單元執行
+    def detect_coffee(self):
+        try:
+                resp = self.coffee_client()  # 呼叫 detect_coffee_srv (無參數)
+                if resp.success:
+                    return {
+                        'target_name': resp.target_name,
+                        'target_xyz': list(resp.target_xyz)
+                    }
+                else:
+                    rospy.loginfo("Coffee detection succeeded, but no valid target matched.")
+                    return None
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Coffee detection service call failed: {e}")
+            return None
 
     def run_competition_flow(self):
         current_state = "CROSS_BRIDGE"

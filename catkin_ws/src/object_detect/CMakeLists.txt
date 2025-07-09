@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(object_detect)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -52,14 +52,15 @@ add_message_files(
   FILES
   BoundingBox.msg
   BoundingBoxArray.msg
+  
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   DetectObjects.srv
+   DetectCoffee.srv
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
