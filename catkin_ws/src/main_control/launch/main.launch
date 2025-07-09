@@ -36,6 +36,11 @@
   <node pkg="wall_localization" type="wall_localizer.py" name="wall_localizer" output="screen"/>
 
   <node pkg="wall_localization" type="wall_navigator_srv.py" name="wall_navigator_server" output="screen"/>
+
+<!-- object_detect -->
+
+  <node pkg="object_detect" type="orange_detection_srv.py" name="object_detect_server" output="screen"/>
+
     
 <!-- main_control -->
   <node pkg="main_control" type="main_control.py" name="main_control_client" output="screen" respawn="false"/>

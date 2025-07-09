@@ -5,6 +5,8 @@ import rospy
 from std_msgs.msg import String
 from line_follower.srv import SetLineFollower
 from wall_localization.srv import SetWallNavigation
+from object_detect.srv import DetectOrangeGoal
+import numpy as np
 
 class MainController:
 
@@ -12,26 +14,27 @@ class MainController:
         rospy.init_node('main_control_node')
         rospy.loginfo("Main Controller Node Started.")
 
-        # --- 建立服務客戶端 (Service Clients) ---
+        # 等待所有服務啟動
         rospy.loginfo("Waiting for services...")
         rospy.wait_for_service('set_line_follower')
         self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
         
         rospy.wait_for_service('navigate_by_wall')
         self.wall_nav_client = rospy.ServiceProxy('navigate_by_wall', SetWallNavigation)
+        
+        rospy.wait_for_service('detect_orange_goal')
+        self.orange_detect_client = rospy.ServiceProxy('detect_orange_goal', DetectOrangeGoal)
+        
         rospy.loginfo("All services are ready.")
 
         self.last_intersection_type = None
         self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
         rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
 
-
         self.run_competition_flow()
 
     def intersection_callback(self, msg):
         self.last_intersection_type = msg.data
-
-
 
     def toggle_line_follower(self, enable):
         """Start or stop the line follower service."""
@@ -63,9 +66,8 @@ class MainController:
 
     def navigate_by_wall(self, front=-1.0, rear=-1.0, left=-1.0, right=-1.0, angle=-1.0, align_wall=""):
         """Control the robot to navigate by wall."""
-        rospy.loginfo(f"Executing task: Wall navigation...")
+        rospy.loginfo(f"Executing task: Wall navigation with params: front={front}, right={right}, angle={angle}...")
         try:
-            # Service is synchronous, so we can wait for it to be ready
             response = self.wall_nav_client(
                 target_front_distance=front, target_rear_distance=rear,
                 target_left_distance=left, target_right_distance=right,
@@ -77,28 +79,68 @@ class MainController:
             rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
             return False
 
+    def detect_and_navigate_to_orange(self):
+        """Detect orange and navigate to the detected goal."""
+        rospy.loginfo("Executing task: Detect and Navigate to Orange...")
+        
+        # 1. Orange detect service
+        try:
+            rospy.loginfo("Calling orange detection service...")
+            detect_response = self.orange_detect_client()
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to 'detect_orange_goal' failed: {e}")
+            return False
+
+        if not detect_response.success:
+            rospy.logwarn("Orange detection failed. Skipping navigation.")
+            return False
+
+        rospy.loginfo("Orange goal found! Translating coordinates to navigation commands.")
+        
+        # 2. Translate the detected coordinates into navigation commands
+        target_front = detect_response.target_y
+        target_right = detect_response.target_x
+        target_angle_deg = np.degrees(detect_response.target_final_yaw)
+        
+        # 3. Navigate to the target point
+        rospy.loginfo(f"Step 1: Navigating to point (front: {target_front:.2f}m, right: {target_right:.2f}m).")
+        if not self.navigate_by_wall(front=target_front, right=target_right, angle=0.0, align_wall="right"):
+            rospy.logerr("Failed to navigate to the target point.")
+            return False
+
+        # 4. Turning to the final angle
+        rospy.loginfo(f"Step 2: Rotating to final angle ({target_angle_deg:.2f} degrees).")
+        if not self.navigate_by_wall(angle=target_angle_deg):
+            rospy.logerr("Failed to rotate to the final angle.")
+            return False
+            
+        rospy.loginfo("Successfully navigated to the orange goal!")
+        return True
 
     def run_competition_flow(self):
         current_state = "CROSS_BRIDGE"
 
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
-
+##########################################################################################
             if current_state == "CROSS_BRIDGE":
                 if self.follow_line_until_t_junction():
                     current_state = "NAV_AFTER_BRIDGE"
                 else:
                     current_state = "ERROR_RECOVERY"
-
+##########################################################################################
             elif current_state == "NAV_AFTER_BRIDGE":
-
-                if self.navigate_by_wall(front=0.5):
-                    current_state = "TURN_TO_COFFEE_SHOP"
+                if self.navigate_by_wall(front=2.5):
+                    current_state = "DETECT_AND_NAV_TO_ORANGE"
                 else:
                     current_state = "ERROR_RECOVERY"
-
-
-
+##########################################################################################
+            elif current_state == "DETECT_AND_NAV_TO_ORANGE":
+                if self.detect_and_navigate_to_orange():
+                    current_state = "COMPETITION_FINISH"
+                else:
+                    current_state = "ERROR_RECOVERY"
+##########################################################################################
             elif current_state == "COMPETITION_FINISH":
                 rospy.loginfo("All tasks completed successfully!")
                 break

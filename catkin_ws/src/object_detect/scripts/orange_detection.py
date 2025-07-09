@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import time
 import cv2
 import numpy as np
@@ -5,6 +8,7 @@ import pyrealsense2 as rs
 from ultralytics import YOLO
 import rospy
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Float64MultiArray
 import os
 import rospkg
 
@@ -13,7 +17,6 @@ import rospkg
 # 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
 #      包含初始化、取得對齊的影像幀、以及關閉攝影機。
 # =============================================================================
-
 class RealSenseCamera:
     def __init__(self):
         """
@@ -24,14 +27,12 @@ class RealSenseCamera:
         - 啟動 pipeline。
         - 建立 align 物件，用於將深度圖對齊到彩色圖的視角。
         """
-        rospy.init_node("realtime_inference", anonymous = True)
+        # rospy.init_node("realtime_inference", anonymous = True)
         self.pipeline = rs.pipeline()
         config = rs.config()
-        # 啟用 640x480 的深度和彩色影像流，幀率為 30fps
         config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
         config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
-        self.pipeline.start(config)
-        # 建立對齊物件，將深度圖對齊到彩色圖的座標系
+        self.profile = self.pipeline.start(config)
         self.align = rs.align(rs.stream.color)
         print("RealSense Camera Initialized.")
 
@@ -53,15 +54,11 @@ class RealSenseCamera:
         if not depth_frame or not color_frame:
             return None, None, None
 
-        # 取得深度攝影機的內部參數 (焦距 fx, fy, 主點 ppx, ppy 等)
         depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
         img_color = np.asanyarray(color_frame.get_data())
         return depth_intrin, img_color, depth_frame
 
     def stop(self):
-        """
-        停止 pipeline，釋放攝影機資源。
-        """
         self.pipeline.stop()
         print("RealSense Camera Stopped.")
 
@@ -69,7 +66,6 @@ class RealSenseCamera:
 # Class: ObjectDetector
 # 目的: 封裝所有與 YOLOv8 物件偵測和 3D 座標計算相關的邏輯。
 # =============================================================================
-
 class ObjectDetector:
     def __init__(self, model_path, conf_thresh=0.7):
         """
@@ -120,7 +116,6 @@ class ObjectDetector:
         
         # 應用公式，將像素半徑轉換為公尺單位的實際半徑
         radius_meters = (radius_px * surface_depth) / fx
-        
         return radius_meters
 
     def detect(self, img_color, aligned_depth_frame, depth_intrin):
@@ -130,13 +125,12 @@ class ObjectDetector:
         # 執行 YOLOv8 推理
         results = self.model.predict([img_color], conf=self.conf_thresh, verbose=False)
         detections = []
-        im_out = img_color.copy() # 複製一份原始影像，用於繪製結果
+        im_out = img_color.copy()
 
         for result in results:
             if result.boxes is None:
-                continue # 如果沒有偵測到任何物體，則跳過
+                continue
 
-            # 提取偵測結果的資訊
             boxes_xyxy = result.boxes.xyxy.cpu().numpy()
             confs = result.boxes.conf.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
@@ -172,37 +166,32 @@ class ObjectDetector:
                 class_name = names.get(class_id, str(class_id))
                 conf = float(confs[i])
                 
-                # 將所有偵測資訊打包成一個字典，並存入 list
                 detections.append({
                     'class_id': class_id,
                     'class_name': class_name,
                     'conf': round(conf, 3),
-                    'xyz': tuple(world_xyz) # 儲存的是物體中心的XYZ座標
+                    'xyz': tuple(world_xyz)
                 })
 
-                # --- 繪圖區 ---
                 x1, y1, x2, y2 = box
-                # 繪製 bounding box (綠色框)
                 cv2.rectangle(im_out, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                # 繪製中心點 (紅色實心圓)
                 cv2.circle(im_out, (int(ux), int(uy)), 4, (0, 0, 255), -1)
                 
-                # 準備要顯示的標籤文字
                 label = f"{class_name} ({conf:.2f})"
-                label_xyz = f"Center XYZ(m): {world_xyz}" # 顯示的是中心點的XYZ
+                label_xyz = f"Cam XYZ(m): {[round(c, 2) for c in world_xyz]}"
                 
-                # 繪製標籤文字的背景，讓文字更清晰
                 (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
                 cv2.rectangle(im_out, (int(x1), int(y1) - 20), (int(x1) + w, int(y1)), (0, 255, 0), -1)
-                # 繪製類別和信心度文字
                 cv2.putText(im_out, label, (int(x1), int(y1) - 5), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-                # 繪製三維座標文字
                 cv2.putText(im_out, label_xyz, (int(x1), int(y2) + 15),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
                 
         return im_out, detections
 
+# =============================================================================
+# Class: ObjectStorage (無須修改)
+# =============================================================================
 class ObjectStorage:
     def __init__(self, dist_threshold):
         """
@@ -230,9 +219,7 @@ class ObjectStorage:
         """
         for oid, obj in self.stored_objects.items():
             if self.is_same_object(obj, new_obj):
-                # 已存在，不再儲存
                 return
-        # 分配新ID並儲存
         new_id = f'object{self.object_counter:03d}'
         self.stored_objects[new_id] = {
             'class': new_obj['class'],
@@ -266,7 +253,6 @@ class ObjectStorage:
                 groups.append(group)
                 used.update(group)
 
-        # 對每個群組計算平均，並與已儲存物件比對
         for group in groups:
             group_coords = coords[group]
             avg_coord = np.mean(group_coords, axis=0)
@@ -280,34 +266,26 @@ class ObjectStorage:
                     'class': class_name,
                     'xyz': avg_coord.tolist()
                 })
+
     def find_object_pairs(self, min_dist=0.25, max_dist=0.45):
+        # 使用的是已經旋轉對齊過的座標
         results = []
         obj_items = list(self.stored_objects.items())
         for i in range(len(obj_items)):
             id1, obj1 = obj_items[i]
             for j in range(i+1, len(obj_items)):
                 id2, obj2 = obj_items[j]
-                if obj1['class'] == obj2['class']:
-                    continue
-                if abs(obj1['xyz'][2] - obj2['xyz'][2]) > 0.1:
-                    continue
+                if obj1['class'] == obj2['class']: continue
+                if abs(obj1['xyz'][2] - obj2['xyz'][2]) > 0.1: continue
                 dist = np.linalg.norm(np.array(obj1['xyz']) - np.array(obj2['xyz']))
                 if min_dist <= dist <= max_dist:
                     branch_diff = np.round(np.array(obj2['xyz']) - np.array(obj1['xyz']), 3).tolist()
                     vector = np.array([-branch_diff[1], branch_diff[0], 0])
                     norm = np.linalg.norm(vector)
-                    if norm != 0:
-                        unit_vector = (vector / norm).tolist()
-                    else:
-                        unit_vector = [0, 0, 0]
+                    unit_vector = (vector / norm).tolist() if norm != 0 else [0, 0, 0]
                     
-                    # 關鍵修改：轉換為 NumPy 陣列後再運算
-                    if obj1['class'] == "orange":
-                        orange_coordinate = np.array(obj1["xyz"])
-                    if obj2['class'] == "orange":
-                        orange_coordinate = np.array(obj2["xyz"])
-                    coordinate = [orange_coordinate[0], orange_coordinate[1], 0]    
-                    # 使用 NumPy 進行向量運算
+                    orange_coordinate = np.array(obj1["xyz"] if obj1['class'] == "orange" else obj2["xyz"])
+                    coordinate = [orange_coordinate[0], orange_coordinate[1], 0]
                     unit_vector_np = np.array(unit_vector)
                     car_coordinate = (coordinate + unit_vector_np * 0.35).tolist()
                     car_angle = unit_vector_np.tolist()
@@ -316,40 +294,53 @@ class ObjectStorage:
                     print(f"car coordinate = {car_coordinate}")
 
                     twist_msg = Twist()
-                    twist_msg.linear.x = car_coordinate[0]   # x 位置
-                    twist_msg.linear.y = car_coordinate[1]   # y 位置
-                    twist_msg.linear.z = car_coordinate[2]   # z 位置
-                    twist_msg.angular.x = car_angle[0]       # x 方向分量
-                    twist_msg.angular.y = car_angle[1]       # y 方向分量
-                    twist_msg.angular.z = car_angle[2]       # z 方向分量
-
+                    twist_msg.linear.x, twist_msg.linear.y, twist_msg.linear.z = car_coordinate
+                    twist_msg.angular.x, twist_msg.angular.y, twist_msg.angular.z = car_angle
                     self.twist_pub.publish(twist_msg)
                     rospy.sleep(0.5)
                     
-                    results.append({
-                        'id1': id1,
-                        'id2': id2,
-                        'class1': obj1['class'],
-                        'class2': obj2['class'],
-                        'xyz_diff': branch_diff
-                    })
+                    results.append({'id1': id1, 'id2': id2, 'class1': obj1['class'], 'class2': obj2['class'], 'xyz_diff': branch_diff})
         return results
-
 
 # =============================================================================
 # Class: App 
-# 目的：把前面包好的全部拿來用
 # =============================================================================
-
 class App:
     def __init__(self, model_path):
+        rospy.init_node("orange_localizer_node", anonymous=True)
+        
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
-        self.storage = ObjectStorage(dist_threshold=0.15)  # 15cm
-        # 支援多類別暫存
-        self.temp_coords = {}  # {class_name: [xyz, ...]}
+        self.storage = ObjectStorage(dist_threshold=0.15)
+        self.temp_coords = {}
         self.last_process_time = time.time()
 
+        self.wall_alignment_angle_rad = 0.0
+        
+        self.wall_data_sub = rospy.Subscriber(
+            '/wall_distances',
+            Float64MultiArray,
+            self.wall_angle_callback,
+            queue_size=1
+        )
+        rospy.loginfo("Subscribed to /wall_distances for coordinate alignment.")
+
+    def wall_angle_callback(self, msg):
+        """
+        接收來自 wall_localizer 的數據，並更新座標校正角度。
+        """
+        # 根據 wall_localizer.py，right_angle 是第7個元素 (索引為6)
+        if len(msg.data) > 6 and not np.isnan(msg.data[6]):
+            # 1. 接收到的牆面夾角，單位是「度 (degree)」
+            right_angle_deg = msg.data[6]
+            
+            # 2. 我們的目標是讓新座標系的 Y' 軸與牆面平行。
+            #    如果牆面角度為 theta，我們需要將點位做 -theta 的旋轉。
+            # 3. 使用 np.deg2rad() 將「度」轉換為「弧度」，並取負號，以備後續計算使用。
+            self.wall_alignment_angle_rad = -np.deg2rad(right_angle_deg)
+        else:
+            # 如果沒有偵測到右牆，則不進行旋轉，角度為0
+            self.wall_alignment_angle_rad = 0.0
 
     def run(self):
         try:
@@ -359,17 +350,31 @@ class App:
                     continue
 
                 im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
-                cv2.imshow('detection', im_out)
 
-                # 收集所有橘子/綠橘子標籤的座標
+                # 座標旋轉：將相機座標轉換為 "牆面-對齊" 座標
+                angle_rad = self.wall_alignment_angle_rad # 此處角度已經是弧度
+                cos_a = np.cos(angle_rad)
+                sin_a = np.sin(angle_rad)
+                
+                transformed_detections = []
                 for det in detections:
+                    x, y, z = det['xyz']
+                    
+                    # 套用 2D 旋轉公式 (在 XY 平面上旋轉，Z 軸不變)
+                    x_aligned = x * cos_a - y * sin_a
+                    y_aligned = x * sin_a + y * cos_a
+                    
+                    new_det = det.copy()
+                    new_det['xyz'] = (round(x_aligned, 2), round(y_aligned, 2), round(z, 2))
+                    transformed_detections.append(new_det)
+                
+                # 使用旋轉後的座標進行後續所有處理
+                for det in transformed_detections:
                     cname = det['class_name']
                     if cname not in self.temp_coords:
                         self.temp_coords[cname] = []
                     self.temp_coords[cname].append(det['xyz'])
 
-                # 每一秒進行一次群組分析與資料處理
-                # 每一秒進行一次群組分析與資料處理
                 now = time.time()
                 if now - self.last_process_time >= 1.0:
                     for cname, coords in self.temp_coords.items():
@@ -377,9 +382,9 @@ class App:
                         self.temp_coords[cname] = []
                     self.last_process_time = now
 
+                cv2.imshow('detection', im_out)
                 key = cv2.waitKey(1)
                 if key & 0xFF == ord('q') or key == 27:
-                    # 只需要這一行，印出已經包在 find_object_pairs 裡
                     self.storage.find_object_pairs(min_dist=0.25, max_dist=0.45)
                     rospy.sleep(0.5)
                     print("Exiting...")
@@ -396,10 +401,10 @@ if __name__ == '__main__':
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'orange.pt')
-        # model_path = 'orange.pt'
         app = App(model_path)
         app.run()
     except rospy.ROSInterruptException:
         print("ROS node interrupted.")
     except Exception as e:
         print(f"An error occurred: {e}")
+

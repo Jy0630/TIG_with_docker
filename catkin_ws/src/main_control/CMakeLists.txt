@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   dlv_plate_ctrl
   wall_localization
   line_follower
+  object_detect
 )
 
 ## System dependencies are found with CMake's conventions
