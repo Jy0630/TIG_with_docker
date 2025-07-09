@@ -10,7 +10,7 @@ from object_detect.srv import DetectOrangeGoal
 import numpy as np
 
 
-from  object_detect.srv import DetectObjects
+from object_detect.srv import DetectObjects
 from object_detect.srv import  DetectCoffee
 
 class MainController:
