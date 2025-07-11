@@ -167,6 +167,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install pyrealsense2
 RUN pip3 install pyrealsense2
 
+#SSHD SETUP
+# 1. Install OpenSSH Server and create directory for sshd to run
+RUN apt-get update && apt-get install -y openssh-server && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /var/run/sshd /root/.ssh
+
+# 2. Copy your public key.
+COPY ssh/authorized_keys /root/.ssh/authorized_keys
+
+# 3. Set correct permissions for SSH to work
+RUN chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
+
+# 4. Secure the SSH configuration by disabling password login
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config \
+    && sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+#====================================================================================#
 
 WORKDIR /root/catkin_ws
 

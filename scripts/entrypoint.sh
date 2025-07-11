@@ -1,5 +1,8 @@
 #!/bin/zsh
 
+# Start the SSH daemon in the background
+/usr/sbin/sshd
+
 # Compile the project
 source /opt/ros/noetic/setup.zsh
 catkin_make

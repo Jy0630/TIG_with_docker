@@ -13,8 +13,6 @@ run:
 		-e QT_X11_NO_MITSHM=1 \
 		--net=host \
 		--name ros-noetic-zsh \
-		-p 9090:9090 \
-		-p 8888:8888 \
 		--ulimit nofile=1024:524288 \
 		--mount type=bind,source=$(shell pwd)/catkin_ws,target=/root/catkin_ws \
 		$(foreach DEVICE,$(wildcard /dev/ttyUSB* /dev/ttyACM*),--device $(DEVICE):$(DEVICE)) \
@@ -22,8 +20,10 @@ run:
 	xhost -local:root
 
 clean:
-	docker container rm ros-noetic-zsh
-	docker rmi ros-noetic-zsh:latest
+	# Stop the container before removing it to prevent errors
+	-docker stop ros-noetic-zsh
+	-docker rm ros-noetic-zsh
+	-docker rmi ros-noetic-zsh:latest
 
 attach:
 	-docker exec -it ros-noetic-zsh /bin/zsh
