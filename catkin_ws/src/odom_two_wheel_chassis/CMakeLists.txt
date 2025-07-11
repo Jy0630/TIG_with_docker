@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0.2)
 project(odom_two_wheel_chassis)
 
 ## Compile as C++11, supported in ROS Kinetic and newer

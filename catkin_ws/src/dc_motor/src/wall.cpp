@@ -1,5 +1,5 @@
 #include <ros/ros.h>
-#include "DC_motor/SetHeight.h"  // 這是你的 service 檔案
+#include "dc_motor/SetHeight.h"  // 這是你的 service 檔案
 #include <iostream>           // 為了輸入輸出用
 
 int main(int argc, char** argv)
@@ -7,7 +7,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "set_height_client");
     ros::NodeHandle nh;
 
-    ros::ServiceClient client = nh.serviceClient<hello::SetHeight>("set_height");
+    ros::ServiceClient client = nh.serviceClient<dc_motor::SetHeight>("set_height");
 
     float height;
     float relative;  // ⭐修改處：新增變數儲存相對高度
@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     std::cout << "請輸入相對偏移高度（cm，可正可負）: ";  // ⭐修改處：新增提示
     std::cin >> relative;
 
-    hello::SetHeight srv;
+  dc_motor::SetHeight srv;
     srv.request.height = height;
     srv.request.relative = relative;  // ⭐修改處：新增傳送相對高度
 

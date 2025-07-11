@@ -1,12 +1,12 @@
 #include <ros/ros.h>
-#include <hello/SetDistance.h>  // 你的 Service 頭檔，改成你自己的套件名稱
+#include <step_motor/SetDistance.h>  // 你的 Service 頭檔，改成你自己的套件名稱
 #include <iostream>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "step_distance_client");
   ros::NodeHandle nh;
 
-  ros::ServiceClient client = nh.serviceClient<hello::SetDistance>("cmd_distance_srv");
+  ros::ServiceClient client = nh.serviceClient<step_motor::SetDistance>("cmd_distance_srv");
 
   while (ros::ok()) {
     float distance_cm;
@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
       continue;
     }
 
-    hello::SetDistance srv;
+    step_motor::SetDistance srv;
     srv.request.distance = distance_cm;
 
     if (client.call(srv)) {
