@@ -112,6 +112,7 @@ catkin_package(
 )
 
 add_executable(step src/step.cpp)
+add_dependencies(step ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(step ${catkin_LIBRARIES})
 ###########
 ## Build ##

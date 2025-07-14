@@ -110,6 +110,7 @@ CATKIN_DEPENDS geometry_msgs roscpp rospy std_msgs message_runtime
 #  DEPENDS system_lib
 )
 add_executable(wall src/wall.cpp)
+add_dependencies(wall ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(wall ${catkin_LIBRARIES})
 ###########
 ## Build ##
