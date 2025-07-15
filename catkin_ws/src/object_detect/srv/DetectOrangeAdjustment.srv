@@ -1,0 +1,6 @@
+# GetOrangeDepth.srv
+# Request
+---
+bool success
+float32 depth
+float32 x_value

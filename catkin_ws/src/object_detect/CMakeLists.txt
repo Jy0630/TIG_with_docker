@@ -32,6 +32,7 @@ add_service_files(
    FILES
    DetectObjects.srv
    DetectCoffee.srv
+   DetectOrangeAdjustment.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -75,5 +76,6 @@ catkin_install_python(PROGRAMS
   scripts/coffee_supply.py
   scripts/orange_detection.py
   scripts/orange_detection_srv.py
+  scripts/orange_adjustment.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

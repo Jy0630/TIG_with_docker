@@ -3,7 +3,7 @@
         透過來回註解來選擇需要的功能 -->
 
     <!-- 橘子視覺辨識 -->
-    <node name="orange_detection" pkg="object_detect" type="orange_detection.py" output="screen" />
+    <!-- <node name="orange_detection" pkg="object_detect" type="orange_detection.py" output="screen" /> -->
 
     <!-- 咖啡指令視覺辨識 -->
     <!-- <node name="coffee_supply" pkg="object_detection" type="coffee_supply.py" output="screen" /> -->
