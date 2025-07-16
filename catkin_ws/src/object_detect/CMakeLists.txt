@@ -21,19 +21,14 @@ find_package(catkin REQUIRED COMPONENTS
 #   BoundingBoxArray.msg
 # )
 
+## Generate services in the 'srv' folder
 add_service_files(
   FILES
   DetectOrangeGoal.srv
+  DetectObjects.srv
+  DetectCoffee.srv
+  DetectOrangeAdjustment.srv
 )
-
-
-## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   DetectObjects.srv
-   DetectCoffee.srv
-   DetectOrangeAdjustment.srv
- )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -76,6 +71,6 @@ catkin_install_python(PROGRAMS
   scripts/coffee_supply.py
   scripts/orange_detection.py
   scripts/orange_detection_srv.py
-  scripts/orange_adjustment.py
+  scripts/orange_adjustment_srv.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

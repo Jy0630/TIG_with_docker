@@ -135,6 +135,9 @@ class OrangeDetectionServer:
                 rospy.logwarn("No oranges detected after 5 attempts.")
                 cv2.destroyAllWindows()
                 return DetectOrangeAdjustmentResponse(success=False, depth=0.0, x_value=0.0)
+            
+            for d in all_detections:
+                rospy.loginfo(f"Detected orange at X: {d['xyz'][0]:.3f}, Y(depth): {d['xyz'][1]:.3f}")
 
             closest_orange = min(all_detections, key=lambda d: d['xyz'][1])
             depth_y = closest_orange['xyz'][1]
@@ -158,7 +161,7 @@ if __name__ == '__main__':
     try:
         rospy.init_node('orange_depth_server_node')
         rospack = rospkg.RosPack()
-        package_path = rospack.get_path('object_detection')
+        package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'orange.pt')
         server = OrangeDetectionServer(model_path)
         rospy.on_shutdown(server.shutdown)
