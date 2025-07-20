@@ -95,57 +95,55 @@ class MainController:
 
     def detect_and_navigate_to_orange(self, search_timeout_sec=120.0):
         """
-        Detect orange and navigate to the detected goal.
-        This function will continuously call the detection service until it succeeds or a timeout is reached.
+        Detects an orange goal, translates its absolute world coordinates
+        into relative wall distances, and navigates to goal.
         """
-        rospy.loginfo("Executing task: Detect and Navigate to Orange...")
-        
+
+        origin_dist_to_right_wall = rospy.get_param("~origin_to_right_wall_dist", 0.5)  # x1 (meters)
+        origin_dist_to_front_wall = rospy.get_param("~origin_to_front_wall_dist", 3.0)  # y1 (meters)
+
+        rospy.loginfo("[GOAL轉換參數] Origin→右牆距離: %.2fm, Origin→前牆距離: %.2fm" %
+                  (origin_dist_to_right_wall, origin_dist_to_front_wall))
+
         start_time = rospy.Time.now()
         detect_response = None
-        
-        # 1. Loop until an orange pair is found or the timeout is exceeded
+
         while not rospy.is_shutdown():
-            # Check for timeout to prevent getting stuck indefinitely
             if (rospy.Time.now() - start_time).to_sec() > search_timeout_sec:
                 rospy.logerr(f"Search timed out after {search_timeout_sec}s. Could not find orange goal.")
                 return False
 
-            rospy.loginfo_throttle(5, "Continuously searching for orange pair... (This message appears every 5s)")
-            
+            rospy.loginfo_throttle(5, "Continuously searching for orange pair...")
             try:
-                # Call the detection service
                 response = self.orange_detect_client()
                 if response.success:
-                    rospy.loginfo("Orange goal found! Proceeding to navigation.")
+                    rospy.loginfo("Orange goal found! Proceeding to translation and navigation.")
                     detect_response = response
-                    break  # Exit the loop on success
+                    break
                 else:
-                    # If not found, wait a bit before retrying to avoid spamming the service
                     rospy.sleep(1.0)
             except rospy.ServiceException as e:
                 rospy.logerr(f"Service call to 'detect_orange_goal' failed: {e}. Retrying in 2 seconds...")
                 rospy.sleep(2.0)
 
-        # This part is only reached if the loop was broken (i.e., success)
-        if detect_response is None or not detect_response.success:
-            rospy.logerr("Exited search loop without a successful detection.")
+        if detect_response is None:
             return False
 
-        rospy.loginfo("Translating coordinates to navigation commands.")
-        
-        # 2. Translate coordinates to navigation commands
-        target_front = detect_response.target_y
-        target_right = detect_response.target_x
-        target_angle_deg = np.degrees(detect_response.target_final_yaw)
-        
-        # 3. Navigate to the target point
-        rospy.loginfo(f"Step 1: Navigating to point (front: {target_front:.2f}m, right: {target_right:.2f}m).")
-        if not self.navigate_by_wall(front=target_front, right=target_right):
+        world_x = detect_response.target_x
+        world_y = detect_response.target_y
+
+        nav_target_right = abs(world_x) + origin_dist_to_right_wall
+        nav_target_front = origin_dist_to_front_wall - world_y
+
+        rospy.loginfo("Coordinate Translation:")
+        rospy.loginfo(f"  - Detected World Goal (X, Y): ({world_x:.3f}, {world_y:.3f})")
+        rospy.loginfo(f"  - ==> Nav Goal (target_right, target_front, target_angle): ({nav_target_right:.3f}, {nav_target_front:.3f}, {np.degrees(detect_response.target_final_yaw):.3f})")
+
+        if not self.navigate_by_wall(front=nav_target_front, right=nav_target_right ,target_angle=0.0, align_wall="right"):
             rospy.logerr("Failed to navigate to the target point.")
             return False
 
-        # 4. Rotate to the final angle
-        rospy.loginfo(f"Step 2: Rotating to final angle ({target_angle_deg:.2f} degrees).")
+        target_angle_deg = np.degrees(detect_response.target_final_yaw)
         if not self.navigate_by_wall(angle=target_angle_deg):
             rospy.logerr("Failed to rotate to the final angle.")
             return False

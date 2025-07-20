@@ -94,7 +94,6 @@ class ObjectDetector:
                     'class_name': names.get(int(classes[i]), str(int(classes[i]))),
                     'xyz': (world_x, world_y, world_z)
                 })
-                # 繪圖邏輯
                 x1, y1, x2, y2 = box
                 cv2.rectangle(im_out, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 label = f"{names.get(int(classes[i]))} ({float(confs[i]):.2f})"
@@ -145,26 +144,65 @@ class ObjectStorage:
                     break
             if is_new: self.add_or_update_object({'class': class_name, 'xyz': avg_coord.tolist()})
 
-    def find_object_pairs(self, min_dist=0.25, max_dist=0.45):
+    def point_to_line_dist(self, p1, p2, p3):
+        p1_2d = np.array(p1[0:2])
+        p2_2d = np.array(p2[0:2])
+        p3_2d = np.array(p3[0:2])
+        num = np.abs(np.cross(p2_2d - p1_2d, p1_2d - p3_2d))
+        den = np.linalg.norm(p2_2d - p1_2d)
+        if den == 0: return float('inf')
+        return num / den
+
+    def find_object_pairs(self, min_dist=0.25, max_dist=0.45, 
+                          use_trunk_validation=False, trunk_position=None, collinearity_threshold=0.1):
         obj_items = list(self.stored_objects.items())
         for i in range(len(obj_items)):
             id1, obj1 = obj_items[i]
             for j in range(i + 1, len(obj_items)):
                 id2, obj2 = obj_items[j]
-                if obj1['class'] == obj2['class']: continue
+
                 if abs(obj1['xyz'][2] - obj2['xyz'][2]) > 0.1: continue
                 dist = np.linalg.norm(np.array(obj1['xyz']) - np.array(obj2['xyz']))
-                if min_dist <= dist <= max_dist:
-                    branch_diff = np.round(np.array(obj2['xyz']) - np.array(obj1['xyz']), 3)
-                    vector = np.array([-branch_diff[1], branch_diff[0], 0])
-                    norm = np.linalg.norm(vector)
-                    if norm == 0: continue
-                    unit_vector = vector / norm
-                    orange_coord = np.array(obj1["xyz"] if obj1['class'] == "orange" else obj2["xyz"])
-                    target_coord = orange_coord + unit_vector * 0.35
-                    target_yaw = np.arctan2(unit_vector[1], unit_vector[0])
-                    rospy.loginfo(f"Found a valid pair. Target coord: {target_coord.tolist()}, Target yaw: {target_yaw:.2f} rad")
-                    return True, target_coord.tolist(), target_yaw
+                if not (min_dist <= dist <= max_dist): continue
+
+                if use_trunk_validation:
+                    if trunk_position is None:
+                        rospy.logwarn_throttle(5, "Trunk validation enabled but trunk_position is not set.")
+                        continue
+                    
+                    p1_xyz = obj1['xyz']
+                    p2_xyz = obj2['xyz']
+                    distance_to_trunk = self.point_to_line_dist(p1_xyz, p2_xyz, trunk_position)
+                    
+                    if distance_to_trunk > collinearity_threshold:
+                        rospy.logdebug(f"Pair {id1}-{id2} failed trunk validation. Distance: {distance_to_trunk:.3f}m")
+                        continue
+                    rospy.loginfo(f"Pair {id1}-{id2} passed trunk validation! Distance: {distance_to_trunk:.3f}m")
+
+                branch_diff = np.round(np.array(obj2['xyz']) - np.array(obj1['xyz']), 3)
+                vector = np.array([-branch_diff[1], branch_diff[0], 0])
+                norm = np.linalg.norm(vector)
+                if norm == 0: continue
+                unit_vector = vector / norm
+                
+                coord1 = np.array(obj1['xyz'])
+                coord2 = np.array(obj2['xyz'])
+                base_orange_coord = coord1 if np.linalg.norm(coord1) < np.linalg.norm(coord2) else coord2
+                target_coord = base_orange_coord + unit_vector * 0.35
+                
+                # 1. Calculate the yaw of the target heading vector relative to the World +X' axis.
+                yaw_vs_world_x = np.arctan2(unit_vector[1], unit_vector[0])
+                
+                # 2. Adjust the yaw to be relative to the World +Y' axis, which is our new "forward" (0 rad).
+                #    This is equivalent to a -90 degree (-pi/2 rad) rotation of the reference axis.
+                target_yaw = yaw_vs_world_x - (np.pi / 2.0)
+                
+                # 3. Normalize the angle to the range [-pi, pi] for consistency.
+                target_yaw = (target_yaw + np.pi) % (2 * np.pi) - np.pi
+                
+                rospy.loginfo(f"Found a valid pair ({id1}-{id2}). Target coord: {target_coord.tolist()}, Target yaw (vs +Y'): {target_yaw:.2f} rad")
+                return True, target_coord.tolist(), target_yaw
+                
         return False, None, None
 
 # =============================================================================
@@ -173,12 +211,25 @@ class ObjectStorage:
 class App:
     def __init__(self, model_path):
         rospy.init_node("orange_detection_server")
+        
+        self.use_trunk_validation = rospy.get_param("~use_trunk_validation", True)
+        trunk_x = rospy.get_param("~trunk_position_x", 0.5) 
+        trunk_y = rospy.get_param("~trunk_position_y", 3.0)
+        self.trunk_position_world = np.array([trunk_x, trunk_y, 0.0])
+        self.collinearity_threshold = rospy.get_param("~collinearity_threshold", 0.1)
+
+        if self.use_trunk_validation:
+            rospy.loginfo("Trunk collinearity validation is ENABLED.")
+            rospy.loginfo(f"Trunk Position (World-Aligned): {self.trunk_position_world.tolist()}")
+            rospy.loginfo(f"Collinearity Threshold: {self.collinearity_threshold}m")
+        else:
+            rospy.loginfo("Trunk collinearity validation is DISABLED.")
+        
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
         self.storage = ObjectStorage(dist_threshold=0.15)
         self.wall_alignment_angle_rad = 0.0
-        self.wall_data_sub = rospy.Subscriber(
-            '/wall_distances', Float64MultiArray, self.wall_angle_callback, queue_size=1)
+        self.wall_data_sub = rospy.Subscriber('/wall_distances', Float64MultiArray, self.wall_angle_callback, queue_size=1)
         self.detect_service = rospy.Service('detect_orange_goal', DetectOrangeGoal, self.handle_detection_request)
         rospy.loginfo("Orange detection service ('detect_orange_goal') is ready.")
         rospy.spin()
@@ -190,7 +241,7 @@ class App:
             self.wall_alignment_angle_rad = 0.0
 
     def handle_detection_request(self, req):
-        rospy.loginfo("Received orange detection request. Starting 2-second detection cycle...")
+        rospy.loginfo("Received orange detection request. Starting detection cycle...")
         self.storage.stored_objects.clear()
         self.storage.object_counter = 1
         temp_coords = {}
@@ -199,33 +250,40 @@ class App:
             depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
             if depth_intrin is None: continue
             im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
+            
             angle_rad = self.wall_alignment_angle_rad
             cos_a, sin_a = np.cos(angle_rad), np.sin(angle_rad)
             for det in detections:
                 x, y, z = det['xyz']
                 x_aligned = x * cos_a - y * sin_a
                 y_aligned = x * sin_a + y * cos_a
+                
                 cname = det['class_name']
                 if cname not in temp_coords: temp_coords[cname] = []
                 temp_coords[cname].append((x_aligned, y_aligned, z))
+            
             cv2.imshow('Detection Service View', im_out)
             cv2.waitKey(1)
         
-        rospy.loginfo("Data collection finished. Processing clusters...")
+        rospy.loginfo("Data collection finished. Processing clusters using world-aligned coordinates.")
         for cname, coords in temp_coords.items():
             self.storage.process_and_store_clusters(coords, cname, min_group_size=10)
         
-        success, target_coord, target_yaw = self.storage.find_object_pairs()
+        success, target_coord, target_yaw = self.storage.find_object_pairs(
+            use_trunk_validation=self.use_trunk_validation,
+            trunk_position=self.trunk_position_world,
+            collinearity_threshold=self.collinearity_threshold
+        )
         
         response = DetectOrangeGoalResponse()
         if success:
             response.success = True
-            response.message = "Successfully found an orange goal."
+            response.message = "Successfully found a valid orange goal."
             response.target_x, response.target_y = target_coord[0], target_coord[1]
             response.target_final_yaw = target_yaw
         else:
             response.success = False
-            response.message = "Could not find a valid orange pair."
+            response.message = "Could not find a valid orange pair after all filters."
         return response
 
 if __name__ == '__main__':
