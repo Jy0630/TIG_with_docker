@@ -24,7 +24,6 @@ class RealSenseCamera:
         - 啟動 pipeline。
         - 建立 align 物件，用於將深度圖對齊到彩色圖的視角。
         """
-        rospy.init_node("realtime_inference", anonymous = True)
         self.pipeline = rs.pipeline()
         config = rs.config()
         # 啟用 640x480 的深度和彩色影像流，幀率為 30fps
