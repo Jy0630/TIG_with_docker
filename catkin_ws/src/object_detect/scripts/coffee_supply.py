@@ -292,46 +292,6 @@ class CoffeeSupply:
 
         return False
 
-    
-
-# =============================================================================
-# Class: App 
-# 目的：把前面包好的全部拿來用
-# =============================================================================
-
-# class App:
-#     def __init__(self, model_path):
-#         self.camera = RealSenseCamera()
-#         self.detector = ObjectDetector(model_path)
-
-#     def run(self):
-#         try:
-#             while not rospy.is_shutdown():
-#                 depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
-#                 if depth_intrin is None:
-#                     continue
-#                 im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
-#                 cv2.imshow('detection', im_out)
-#                 # print("偵測結果：", detections)  # debug
-#                 if detections:
-#                     coffee = CoffeeSupply(detections)
-#                     coffee.coffee_command()  # <--- 這行就是整合點
-#                     # rels = coffee.get_all_relative()
-#                     # if rels and 'target_name' in rels:
-#                     #     print(f"Home 到 {rels['target_name']} 的相對位置: {rels['home_to_target']}")
-#                     #     print(f"Tree 到 {rels['target_name']} 的相對位置: {rels['tree_to_target']}")
-#                     # else:
-#                     #     print("找不到 black 或 white 目標，無法計算相對位置。")
-#                 key = cv2.waitKey(1)
-#                 if key & 0xFF == ord('q') or key == 27:
-#                     print("Exiting...")
-#                     break
-#         except KeyboardInterrupt:
-#             print("Interrupted by user. Exiting...")
-#         finally:
-#             self.camera.stop()
-#             cv2.destroyAllWindows()
-
 class CoffeeSupplyDetectionNode:
     def __init__(self, model_path):
         #初始化節點
