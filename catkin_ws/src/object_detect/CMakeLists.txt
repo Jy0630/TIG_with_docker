@@ -69,8 +69,8 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/coffee_detection.py
   scripts/coffee_supply.py
-  scripts/orange_detection.py
-  scripts/orange_detection_srv.py
   scripts/orange_adjustment_srv.py
+  scripts/orange_detection_srv.py
+  scripts/orange_detection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

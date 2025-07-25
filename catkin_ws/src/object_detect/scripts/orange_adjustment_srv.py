@@ -7,17 +7,34 @@ from ultralytics import YOLO
 import rospy
 import os
 import rospkg
+from geometry_msgs.msg import Twist
 from object_detect.srv import DetectOrangeAdjustment, DetectOrangeAdjustmentResponse
 
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
+        self.started = False  # 新增 flag
         config = rs.config()
         config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
         config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
-        self.pipeline.start(config)
-        self.align = rs.align(rs.stream.color)
-        rospy.loginfo("RealSense Camera Initialized.")
+        try:
+            self.pipeline.start(config)
+            self.started = True
+            self.align = rs.align(rs.stream.color)
+            rospy.loginfo("RealSense Camera Initialized.")
+        except Exception as e:
+            rospy.logerr(f"Failed to start RealSense Camera: {e}")
+            self.started = False
+
+    def stop(self):
+        if self.started:
+            self.pipeline.stop()
+            self.started = False  # 停止後修改 flag
+            rospy.loginfo("RealSense Camera Stopped.")
+        else:
+            rospy.logwarn("RealSense pipeline was not started; skip stopping.")
+
+
 
     def get_aligned_images(self):
         frames = self.pipeline.wait_for_frames()
@@ -29,11 +46,6 @@ class RealSenseCamera:
         depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
         img_color = np.asanyarray(color_frame.get_data())
         return depth_intrin, img_color, depth_frame
-
-    def stop(self):
-        self.pipeline.stop()
-        rospy.loginfo("RealSense Camera Stopped.")
-
 
 class ObjectDetector:
     def __init__(self, model_path, conf_thresh=0.7):
@@ -103,58 +115,85 @@ class ObjectDetector:
 
         return detections, img_with_detections
 
-
-class OrangeDetectionServer:
+class App:
     def __init__(self, model_path):
-        rospy.loginfo("Initializing Orange Detection Server...")
+        rospy.loginfo("Initializing Orange Detection Server (no service mode)...")
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
-        self.service = rospy.Service('get_orange_depth', DetectOrangeAdjustment, self.handle_get_orange_depth)
+        self.velocity_publisher = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
+        self.previous_twist = Twist()  # 新增 previous_twist
+        rospy.loginfo("Orange Detection initialized. Starting detection loop...")
+        self.orange_service = rospy.Service('get_orange_depth', DetectOrangeAdjustment, self.handle_get_orange_depth)
         rospy.loginfo("Service 'get_orange_depth' is ready.")
 
+
+
     def handle_get_orange_depth(self, req):
-        rospy.loginfo("Received request to find an orange.")
         try:
-            all_detections = []
-            for _ in range(5):
+            while True:
                 depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
                 if depth_intrin is None:
-                    rospy.sleep(0.1)
-                    continue
+                    rospy.loginfo("No camera data.")
+                    return DetectOrangeAdjustmentResponse(success=False, depth=0.0)
+
                 detections, img_with_detections = self.detector.detect(img_color, depth_frame, depth_intrin)
 
-                # Show image with detections
-                cv2.imshow("Orange Detection", img_with_detections)
-                cv2.waitKey(1)
-
                 if detections:
-                    all_detections.extend(detections)
-                rospy.sleep(0.1)
+                    closest_orange = min(detections, key=lambda d: d['xyz'][1])
+                    depth_y = closest_orange['xyz'][1]
+                    world_x = closest_orange['xyz'][0]
 
-            if not all_detections:
-                rospy.logwarn("No oranges detected after 5 attempts.")
-                cv2.destroyAllWindows()
-                return DetectOrangeAdjustmentResponse(success=False, depth=0.0, x_value=0.0)
-            
-            for d in all_detections:
-                rospy.loginfo(f"Detected orange at X: {d['xyz'][0]:.3f}, Y(depth): {d['xyz'][1]:.3f}")
+                    twist_msg = Twist()
 
-            closest_orange = min(all_detections, key=lambda d: d['xyz'][1])
-            depth_y = closest_orange['xyz'][1]
-            world_x = closest_orange['xyz'][0]
-            rospy.loginfo(f"Closest orange found. Depth (Y-axis): {depth_y:.3f} meters, X: {world_x:.3f} meters.")
+                    if abs(world_x) < 0.1:
+                        rospy.loginfo(f"Orange is correct, the depth of orange is {depth_y}m")
+                        twist_msg.linear.x = 0
+                        twist_msg.linear.y = 0
+                        twist_msg.linear.z = 0
+                        twist_msg.angular.x = 0
+                        twist_msg.angular.y = 0
+                        twist_msg.angular.z = 0
+                        self.velocity_publisher.publish(twist_msg)
+                        return DetectOrangeAdjustmentResponse(success=True, depth=float(depth_y))
 
-            cv2.destroyAllWindows()
-            return DetectOrangeAdjustmentResponse(success=True, depth=float(depth_y), x_value=float(world_x))
+                    if world_x > 0:
+                        rospy.loginfo("Orange is to the right. Publishing Twist command.")
+                        twist_msg.linear.x = 0.1
+                        twist_msg.linear.y = 0.1
+                        twist_msg.linear.z = 0.1
+                        twist_msg.angular.x = -0.2
+                        twist_msg.angular.y = -0.2
+                        twist_msg.angular.z = -0.2
+
+                    elif world_x < 0:
+                        rospy.loginfo("Orange is to the left. Publishing Twist command.")
+                        twist_msg.linear.x = 0.2
+                        twist_msg.linear.y = 0.2
+                        twist_msg.linear.z = 0.2
+                        twist_msg.angular.x = -0.1
+                        twist_msg.angular.y = -0.1
+                        twist_msg.angular.z = -0.1
+
+                    if twist_msg != self.previous_twist:
+                        self.velocity_publisher.publish(twist_msg)
+                        self.previous_twist = twist_msg
+                        rospy.loginfo("Twist command published.")
+                    else:
+                        rospy.loginfo("Same twist as previous. Skipping publish.")
+
+                else:
+                    rospy.loginfo("No oranges detected.")
 
         except Exception as e:
             rospy.logerr(f"An error occurred during detection: {e}")
-            cv2.destroyAllWindows()
-            return DetectOrangeAdjustmentResponse(success=False, depth=0.0, x_value=0.0)
+            return DetectOrangeAdjustmentResponse(success=False, depth=0.0)
 
+        
     def shutdown(self):
         self.camera.stop()
         cv2.destroyAllWindows()
+        rospy.loginfo("Orange Detection Server Shutdown.")
+
 
 
 if __name__ == '__main__':
@@ -163,9 +202,9 @@ if __name__ == '__main__':
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'orange.pt')
-        server = OrangeDetectionServer(model_path)
+        server = App(model_path)
         rospy.on_shutdown(server.shutdown)
-        rospy.spin()
+        rospy.spin()  # 等待 service 呼叫
 
     except rospy.ROSInterruptException:
         pass
