@@ -1,0 +1,51 @@
+<launch>
+
+    <param name="/use_sim_time" value="false" />
+    <arg name="baudrate" default="1000000" />
+    <arg name="angle_compensate" default="true" />
+
+    <!-- 啟動前方 RPLIDAR -->
+    <node name="rplidar_front" pkg="rplidar_ros" type="rplidarNode" output="screen">
+        <param name="serial_port"      type="string" value="/dev/rplidar_front"/>
+        <param name="serial_baudrate"  type="int"    value="$(arg baudrate)"/>
+        <param name="frame_id"         type="string" value="lidar_front_frame"/>
+        <param name="inverted"         type="bool"   value="false"/>
+        <param name="angle_compensate" type="bool"   value="$(arg angle_compensate)"/>
+        <remap from="scan" to="/scan_front"/>
+    </node>
+
+    <!-- 啟動後方 RPLIDAR -->
+    <node name="rplidar_rear" pkg="rplidar_ros" type="rplidarNode" output="screen">
+        <param name="serial_port"      type="string" value="/dev/rplidar_rear"/>
+        <param name="serial_baudrate"  type="int"    value="$(arg baudrate)"/>
+        <param name="frame_id"         type="string" value="lidar_rear_frame"/>
+        <param name="inverted"         type="bool"   value="false"/>
+        <param name="angle_compensate" type="bool"   value="$(arg angle_compensate)"/>
+        <remap from="scan" to="/scan_rear"/>
+    </node>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_front_tf"
+          args="-0.0615 0.0985 0 0 0 0 base_link lidar_front_frame" respawn="true" />
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_rear_tf"
+          args="0.0615 -0.0985 0 3.14159 0 0 base_link lidar_rear_frame" respawn="true" />
+          
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_merged_laser_tf"
+          args="0 0 0 0 0 0 base_link merged_laser_frame" respawn="true" />
+
+    <node pkg="ira_laser_tools" type="laserscan_multi_merger" name="laserscan_merger" output="screen">
+        <param name="destination_frame" type="string" value="merged_laser_frame"/>
+        <param name="cloud_destination_topic" type="string" value="/merged_cloud"/>
+        <param name="scan_destination_topic" type="string" value="/scan_merged"/>
+        <param name="laserscan_topics" type="string" value="/scan_front /scan_rear"/>
+        <param name="angle_min" type="double" value="-3.14159"/>
+        <param name="angle_max" type="double" value="3.14159"/>
+        <param name="angle_increment" type="double" value="0.006"/>
+        <param name="scan_time" type="double" value="0.1"/>
+        <param name="range_min" type="double" value="0.05"/>
+        <param name="range_max" type="double" value="18.0"/>
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rplidar_ros)/rviz/merged_lidar.rviz" />
+
+</launch>

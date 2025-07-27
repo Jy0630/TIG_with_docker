@@ -4,7 +4,6 @@
 import rospy
 import numpy as np
 from geometry_msgs.msg import Twist, Point
-# 引入我們剛剛定義的 Service 類型
 from line_follower.srv import SetLineFollower, SetLineFollowerResponse
 
 class MecanumController:
@@ -14,19 +13,18 @@ class MecanumController:
         
         self.cmd_vel_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=1)
         
-        # **核心修改 1: 初始化時不訂閱**
         # self.detection_sub = rospy.Subscriber('/line_detect/detection_data', Point, self.control_callback)
-        self.detection_sub = None  # 將訂閱者物件儲存起來，以便後續取消
-        self.is_active = False     # 新增一個狀態旗標，方便管理
+        self.detection_sub = None 
+        self.is_active = False 
 
         self.load_params()
         
-        # **核心修改 2: 建立 Service Server**
+        # 建立 Service Server
         # 當收到名為 'set_line_follower' 的服務請求時，呼叫 self.handle_set_line_follower 函式
         self.service = rospy.Service('set_line_follower', SetLineFollower, self.handle_set_line_follower)
         rospy.loginfo("Service 'set_line_follower' is ready.")
 
-    # **核心修改 3: 撰寫 Service 的處理函式**
+    # Service 的處理函式
     def handle_set_line_follower(self, req):
         """
         這個函式會在收到 Service 請求時被呼叫。
@@ -49,12 +47,12 @@ class MecanumController:
             # 只有在目前是啟動狀態時才需要停止
             if self.is_active:
                 rospy.loginfo("Received request to DISABLE line follower.")
-                # 非常重要：取消訂閱！這樣 control_callback 就不會再被觸發
+                # 取消訂閱 control_callback 就不會再被觸發
                 if self.detection_sub:
                     self.detection_sub.unregister()
                     self.detection_sub = None
                 
-                # 非常重要：發送一個零速指令，確保機器人完全停止
+                # 發送一個零速指令，確保機器人完全停止
                 stop_msg = Twist()
                 self.cmd_vel_pub.publish(stop_msg)
                 
@@ -65,7 +63,6 @@ class MecanumController:
                 return SetLineFollowerResponse(success=True, message="Already disabled.")
 
     def load_params(self):
-        # ... 這裡的參數載入邏輯完全不用變 ...
         # Pixel thresholds (單位: 像素)
         self.pixel_thresh_1 = rospy.get_param('~pixel_thresh_1', 20)
         self.pixel_thresh_2 = rospy.get_param('~pixel_thresh_2', 120)
@@ -95,14 +92,12 @@ class MecanumController:
         rospy.loginfo("Parameters loaded successfully.")
 
     def control_callback(self, data):
-        # 這個函式本身完全不用變，因為它的執行現在受到訂閱/取消訂閱的控制
         pixel_deviation = data.x
         angle_deviation = data.y
         vel_msg = Twist()
         abs_pixel_dev = abs(pixel_deviation)
         abs_angle_dev = abs(angle_deviation)
         
-        # ... (你原有的完整控制邏輯) ...
         if abs_pixel_dev > self.pixel_thresh_3:
             vel_msg.linear.x = self.fwd_speed_correct_3
             vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_3
@@ -132,6 +127,6 @@ class MecanumController:
 if __name__ == '__main__':
     try:
         mc = MecanumController()
-        rospy.spin()  # 保持節點運行，以便它可以持續接收服務請求
+        rospy.spin() 
     except rospy.ROSInterruptException:
         rospy.loginfo("line_following_node shutted down")
