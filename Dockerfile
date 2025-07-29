@@ -221,9 +221,11 @@ RUN pip3 install pyrealsense2
 RUN apt-get update && apt-get install -y openssh-server && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /var/run/sshd /root/.ssh
 
+RUN sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
 
 # 2. Copy your public key.
 COPY ssh/authorized_keys /root/.ssh/authorized_keys
+
 
 
 # 3. Set correct permissions for SSH to work

@@ -25,10 +25,10 @@
     </node>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_front_tf"
-          args="-0.0615 0.0985 0 0 0 0 base_link lidar_front_frame" respawn="true" />
+          args="-0.215 -0.21375 0 0.067 0 0 base_link lidar_front_frame" respawn="true" />
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_rear_tf"
-          args="0.0615 -0.0985 0 3.14159 0 0 base_link lidar_rear_frame" respawn="true" />
+          args="0.215 0.21375 0 3.14159 0 0 base_link lidar_rear_frame" respawn="true" />
           
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_merged_laser_tf"
           args="0 0 0 0 0 0 base_link merged_laser_frame" respawn="true" />
@@ -40,7 +40,7 @@
         <param name="laserscan_topics" type="string" value="/scan_front /scan_rear"/>
         <param name="angle_min" type="double" value="-3.14159"/>
         <param name="angle_max" type="double" value="3.14159"/>
-        <param name="angle_increment" type="double" value="0.006"/>
+        <param name="angle_increment" type="double" value="0.001"/> 
         <param name="scan_time" type="double" value="0.1"/>
         <param name="range_min" type="double" value="0.05"/>
         <param name="range_max" type="double" value="18.0"/>
