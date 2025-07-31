@@ -117,7 +117,7 @@ class WallNavigator:
                 candidates.append((wall, ang))
         if not candidates:
             rospy.logwarn("No reference wall. Fallback to odometry-only rotation.")
-            self.rotation_sub_state = "ROTATING_COMPLEX_COARSE"
+            self.rotation_sub_state = "ROTATING_BY_ODOM"
             self.odom_target_yaw = normalize_angle_rad(self.current_yaw + np.radians(angle_offset_deg))
             self.state = "ROTATING_TO_ANGLE"
             return
@@ -272,6 +272,14 @@ class WallNavigator:
                     else:
                         rospy.logwarn("Cannot fine-tune: wall angle not detected. Mission complete.")
                         self.state = "GOAL_REACHED"
+
+            elif self.rotation_sub_state == "ROTATING_BY_ODOM":
+                error_rad = normalize_angle_rad(self.odom_target_yaw - self.current_yaw)
+                speed = get_segmented_speed(np.degrees(error_rad), self.odom_angle_thresholds, self.odom_angle_speeds)
+                cmd.angular.z = speed
+                if abs(np.degrees(error_rad)) < self.final_angle_thresholds[-1]:
+                    rospy.loginfo("Odom rotation finished.")
+                    self.state = "GOAL_REACHED"
 
         elif self.state == "GOAL_REACHED":
             rospy.loginfo("Goal Reached! Resetting state to IDLE.")
