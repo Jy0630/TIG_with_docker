@@ -8,54 +8,80 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from geometry_msgs.msg import Point
 from cv_bridge import CvBridge, CvBridgeError
+from line_follower.srv import SetCameraState, SetCameraStateResponse
 
 class LineDetectorHybridThreshold:
     def __init__(self):
         rospy.init_node('line_detect', anonymous=True)
-        rospy.loginfo("line_detect node started")
+        rospy.loginfo("line_detect node started, waiting for command to start camera.")
 
         self.bridge = CvBridge()
-        camera_id = rospy.get_param("~camera_id", "/dev/camera")
-        self.cap = cv2.VideoCapture(camera_id)
-        if not self.cap.isOpened():
-            rospy.logerr("cannot access camera %s" % camera_id)
-            rospy.signal_shutdown("cannot access camera %s" % camera_id)
-            return
-        rospy.loginfo("launched camera %s" % camera_id)
-
-        # 取得可自定義的過濾參數
-        self.min_line_width = rospy.get_param('~min_line_width', 5)   # 最小線寬 (pixels)
-        self.max_line_width = rospy.get_param('~max_line_width', 50)  # 最大線寬 (pixels)
-        self.min_line_area = rospy.get_param('~min_line_area', 500)   # 最小輪廓面積
+        self.camera_id = rospy.get_param("~camera_id", "/dev/camera")
+        
+        # 初始化時不清空，設為 None
+        self.cap = None
+        self.timer = None
+        
+        # 這些參數只會被 detect_line 使用
+        self.min_line_width = rospy.get_param('~min_line_width', 5)
+        self.max_line_width = rospy.get_param('~max_line_width', 50)
+        self.min_line_area = rospy.get_param('~min_line_area', 500)
 
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
         self.debug_image_pub = rospy.Publisher('/line_detect/image_processed', Image, queue_size=1)
 
-        rospy.Timer(rospy.Duration(1.0/30.0), self.process_frame)
+        # 建立 Service Server，等待命令
+        self.camera_service = rospy.Service('/line_detect/set_camera_state', SetCameraState, self.handle_set_camera_state)
+        
+    def handle_set_camera_state(self, req):
+        if req.enable:
+            # --- 請求啟動攝影機 ---
+            if self.cap and self.cap.isOpened():
+                rospy.logwarn("Camera is already running.")
+                return SetCameraStateResponse(success=True, message="Camera already running.")
+
+            self.cap = cv2.VideoCapture(self.camera_id)
+            if not self.cap.isOpened():
+                rospy.logerr("Cannot access camera %s" % self.camera_id)
+                self.cap = None
+                return SetCameraStateResponse(success=False, message="Cannot access camera.")
+            
+            # 啟動影像處理的計時器
+            self.timer = rospy.Timer(rospy.Duration(1.0/30.0), self.process_frame)
+            rospy.loginfo("Camera enabled and line detection started.")
+            return SetCameraStateResponse(success=True, message="Camera enabled.")
+        else:
+            # --- 請求關閉攝影機 ---
+            if self.timer:
+                self.timer.shutdown()
+                self.timer = None
+            
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+                cv2.destroyAllWindows()
+                rospy.loginfo("Camera disabled and resources released.")
+            
+            return SetCameraStateResponse(success=True, message="Camera disabled.")
 
     def _preprocess_image(self, roi):
-        """
-        Conbine global Otsu thresholding and adaptive thresholding to enhance line detection.
-        """
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-
         _, global_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         equalized = clahe.apply(gray)
-        # To adjust params, try different values for blockSize and C, (blockSize must be odd)
         adaptive_thresh = cv2.adaptiveThreshold(equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                                 cv2.THRESH_BINARY_INV, 15, 4) 
-
         combined_thresh = cv2.bitwise_or(global_thresh, adaptive_thresh)
-
         kernel = np.ones((5, 5), np.uint8)
         closed_thresh = cv2.morphologyEx(combined_thresh, cv2.MORPH_CLOSE, kernel)
-        
         return closed_thresh
 
     def process_frame(self, event):
+        if not self.cap or not self.cap.isOpened():
+            rospy.logwarn_throttle(5, "process_frame called but camera is not available.")
+            return
+
         ret, cv_image = self.cap.read()
         if not ret:
             rospy.logwarn("cannot read frame from camera")
@@ -63,13 +89,10 @@ class LineDetectorHybridThreshold:
 
         display_image = cv_image.copy()
         height, width, _ = display_image.shape
-        
-        # MODIFIED: 將下半部循線區域擴大為 3/4
         roi_start_row = height * 1 // 4
         bottom_roi = display_image[roi_start_row:, :]
         top_roi = display_image[:roi_start_row, :]
 
-        # 呼叫新的偵測函數
         pixel_deviation, angle_deviation, main_line_center_x = self.detect_line(bottom_roi)
         intersection_type = self.detect_intersection(top_roi, main_line_center_x)
 
@@ -78,14 +101,13 @@ class LineDetectorHybridThreshold:
         self.intersection_pub.publish(String(data=intersection_type))
 
         if main_line_center_x is not None:
-            # 由於 ROI 起始點改變，畫線時需要加上偏移量
             cv2.line(display_image, (main_line_center_x, roi_start_row), (main_line_center_x, height), (0, 0, 255), 1)
 
         info_text_line = "PixelDev: {:.1f}, AngleDev: {:.1f}".format(pixel_deviation, angle_deviation)
         info_text_fork = "Intersection: {}".format(intersection_type)
         cv2.putText(display_image, info_text_line, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         cv2.putText(display_image, info_text_fork, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-        cv2.line(display_image, (0, roi_start_row), (width, roi_start_row), (255, 255, 0), 2) # 標示出 ROI 分界線
+        cv2.line(display_image, (0, roi_start_row), (width, roi_start_row), (255, 255, 0), 2)
 
         cv2.imshow("Processed Frame", display_image)
         cv2.waitKey(1)
@@ -96,57 +118,42 @@ class LineDetectorHybridThreshold:
             rospy.logerr(e)
 
     def detect_line(self, roi):
-        """
-        NEW & IMPROVED
-        偵測線條，並根據面積和寬度過濾輪廓
-        """
         thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
             return 0.0, 0.0, None
 
-        # NEW: 過濾輪廓
         valid_contours = []
         for cnt in contours:
-            # 1. 面積過濾
             area = cv2.contourArea(cnt)
             if area < self.min_line_area:
                 continue
-
-            # 2. 線寬過濾
             rect = cv2.minAreaRect(cnt)
             w, h = rect[1]
             line_width = min(w, h)
             if not (self.min_line_width < line_width < self.max_line_width):
                 continue
-            
             valid_contours.append(cnt)
 
         if not valid_contours:
             return 0.0, 0.0, None
 
-        # 從所有有效的輪廓中找到最大的那一個
         largest_contour = max(valid_contours, key=cv2.contourArea)
-        
         M = cv2.moments(largest_contour)
         pixel_deviation, angle_deviation, line_center_x = 0.0, 0.0, None
         if M["m00"] > 0:
             cx = int(M["m10"] / M["m00"])
             pixel_deviation = cx - (roi.shape[1] // 2)
             line_center_x = cx
-            
             rect = cv2.minAreaRect(largest_contour)
             rect_width, rect_height = rect[1]
             angle = rect[2]
-            
             if rect_width < rect_height:
                 angle_deviation = angle + 90
             else:
                 angle_deviation = angle
-                
             cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
-
         return pixel_deviation, angle_deviation, line_center_x
 
     def detect_intersection(self, roi, main_line_center_x):
@@ -157,14 +164,14 @@ class LineDetectorHybridThreshold:
         if not contours:
             return "STRAIGHT"
         largest_contour = max(contours, key=cv2.contourArea)
-        if cv2.contourArea(largest_contour) < 800:
+        if cv2.contourArea(largest_contour) < 800: # area threshold
              return "STRAIGHT"
         x, y, w, h = cv2.boundingRect(largest_contour)
         cv2.drawContours(roi, [largest_contour], -1, (255, 0, 0), 2)
         center_line_ref = main_line_center_x
         margin = 30
-        is_left = (x + w -200) < (center_line_ref - margin)
-        is_right = x +200 > (center_line_ref + margin)
+        is_left = (x + w - 200) < (center_line_ref - margin)
+        is_right = x + 200 > (center_line_ref + margin)
         if not is_left and not is_right:
             return "T_JUNCTION"
         elif is_left and not is_right:
@@ -176,8 +183,11 @@ class LineDetectorHybridThreshold:
 
     def on_shutdown(self):
         rospy.loginfo("shutting 'line_detector_node'...")
-        self.cap.release()
-        rospy.loginfo("camera released")
+        if self.timer:
+            self.timer.shutdown()
+        if self.cap:
+            self.cap.release()
+            rospy.loginfo("camera released")
         cv2.destroyAllWindows()
         rospy.loginfo("OpenCV windows closed")
 

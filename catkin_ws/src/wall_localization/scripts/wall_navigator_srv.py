@@ -115,8 +115,9 @@ class WallNavigator:
             ang = sensed_data.get(f"{wall}_angle")
             if ang is not None and not np.isnan(ang):
                 candidates.append((wall, ang))
+        
         if not candidates:
-            rospy.logwarn("No reference wall. Fallback to odometry-only rotation.")
+            rospy.logwarn("No reference wall found. Fallback to odometry-only rotation.")
             self.rotation_sub_state = "ROTATING_BY_ODOM"
             self.odom_target_yaw = normalize_angle_rad(self.current_yaw + np.radians(angle_offset_deg))
             self.state = "ROTATING_TO_ANGLE"
@@ -130,17 +131,19 @@ class WallNavigator:
         if -44.0 <= new_angle <= 44.0:
             self.rotation_target_angles = {ref_wall: new_angle}
             self.rotation_sub_state = "ROTATING_SIMPLE"
-            rospy.loginfo(f"predict_and_prepare_rotation: same wall ({ref_wall}), target={new_angle:.2f}")
+            rospy.loginfo(f"predict_and_prepare_rotation: Small angle rotation. Keep tracking '{ref_wall}', new target: {new_angle:.2f}")
         else:
             walls = ['front','right','rear','left']
             idx = walls.index(ref_wall)
-            shift = int(round(rot/90.0))
-            new_idx = (idx + shift)%4
+            shift = int(round(rot / 90.0))
+            new_idx = (idx + shift) % 4
             new_wall = walls[new_idx]
+            
             self.rotation_target_angles = {new_wall: normalize_angle(initial_ang)}
             self.rotation_sub_state = "ROTATING_COMPLEX_COARSE"
             self.odom_target_yaw = normalize_angle_rad(self.current_yaw + np.radians(angle_offset_deg))
-            rospy.loginfo(f"predict_and_prepare_rotation: rotate odom first, then fine-tune at {new_wall}, target={normalize_angle(initial_ang):.2f}")
+            rospy.loginfo(f"predict_and_prepare_rotation: Large angle rotation. Odom rotate first, then fine-tune '{new_wall}' to target: {self.rotation_target_angles[new_wall]:.2f}")
+        
         self.state = "ROTATING_TO_ANGLE"
 
     def localization_callback(self, msg):
@@ -152,6 +155,8 @@ class WallNavigator:
             'front_angle': msg.data[4], 'rear_angle': msg.data[5], 'left_angle': msg.data[6], 'right_angle': msg.data[7]
         }
         cmd = Twist()
+        # A single point of control for rotation direction. Adjust (1.0 or -1.0) if behavior is inverted.
+        angular_sign_correction = 1.0 
 
         if self.state == "ODOM_NAVIGATION":
             has_linear_goal = any(d != -1.0 for d in [self.current_goal.target_front_distance, self.current_goal.target_rear_distance, self.current_goal.target_left_distance, self.current_goal.target_right_distance])
@@ -171,12 +176,10 @@ class WallNavigator:
                 
                 target_dist_x = self.current_goal.target_front_distance if self.current_goal.target_front_distance != -1.0 else -self.current_goal.target_rear_distance if self.current_goal.target_rear_distance != -1.0 else 0
                 error_x = target_dist_x - dist_traveled_robot_x
-
                 cmd.linear.x = get_segmented_speed(error_x, self.odom_dist_thresholds, self.odom_dist_speeds)
 
                 target_dist_y = self.current_goal.target_left_distance if self.current_goal.target_left_distance != -1.0 else -self.current_goal.target_right_distance if self.current_goal.target_right_distance != -1.0 else 0
                 error_y = target_dist_y - dist_traveled_robot_y
-
                 cmd.linear.y = get_segmented_speed(error_y, self.odom_dist_thresholds, self.odom_dist_speeds)
 
                 if cmd.linear.x == 0.0 and cmd.linear.y == 0.0:
@@ -185,7 +188,7 @@ class WallNavigator:
             if has_angular_goal:
                 error_rad = normalize_angle_rad(self.odom_target_yaw - self.current_yaw)
                 speed = get_segmented_speed(np.degrees(error_rad), self.odom_angle_thresholds, self.odom_angle_speeds)
-                cmd.angular.z = speed
+                cmd.angular.z = speed * angular_sign_correction
                 if cmd.angular.z == 0.0:
                     angular_achieved = True
 
@@ -204,7 +207,6 @@ class WallNavigator:
                         dist = sensed_data.get(f'{direction}_dist')
                         if not np.isnan(dist):
                             error = target_dist_val - dist
-
                             speed = get_segmented_speed(error, self.dist_thresholds, self.dist_speeds)
                             if direction == 'front': cmd.linear.x = -speed
                             elif direction == 'rear': cmd.linear.x = speed
@@ -216,10 +218,10 @@ class WallNavigator:
             if is_alignment_goal:
                 alignment_wall = self.current_goal.align_to_wall
                 wall_angle = sensed_data.get(f'{alignment_wall}_angle')
-                if not np.isnan(wall_angle):
+                if wall_angle is not None and not np.isnan(wall_angle):
                     error = 0.0 - wall_angle
                     speed = get_segmented_speed(error, self.moving_align_thresholds, self.moving_align_speeds)
-                    cmd.angular.z = speed
+                    cmd.angular.z = speed * angular_sign_correction
                     rospy.loginfo_throttle(1, f"Moving & Aligning (Loose). Err: {error:.2f}, Ang.Z: {cmd.angular.z:.2f}")
 
             if not has_linear_goal or (achieved_controls == active_controls and active_controls > 0):
@@ -238,47 +240,57 @@ class WallNavigator:
         elif self.state == "ROTATING_TO_ANGLE":
             if self.rotation_sub_state == "ALIGNING_TO_WALL":
                 wall_angle = sensed_data.get(f'{self.alignment_wall}_angle')
-                if not np.isnan(wall_angle):
+                if wall_angle is not None and not np.isnan(wall_angle):
                     error = 0.0 - wall_angle
                     speed = get_segmented_speed(error, self.final_angle_thresholds, self.final_angle_speeds)
-                    cmd.angular.z = speed
-                    rospy.loginfo_throttle(1, f"Final Aligning (Strict). Err: {error:.2f}, Ang.Z: {cmd.angular.z:.2f}")
+                    cmd.angular.z = speed * angular_sign_correction
                     if abs(error) < self.final_angle_thresholds[-1]:
                         self.state = "GOAL_REACHED"
                 else:
-                    rospy.logwarn(f"Cannot align: {self.alignment_wall} wall not detected. Mission complete.")
+                    rospy.logwarn(f"Cannot align: wall '{self.alignment_wall}' not detected.")
                     self.state = "GOAL_REACHED"
             
             elif self.rotation_sub_state == "ROTATING_SIMPLE":
+                fine_tune_achieved = False
                 for wall_type, target_angle in self.rotation_target_angles.items():
-                    wall_angle = sensed_data.get(f'{wall_type}_angle')
-                    if wall_angle is not None and not np.isnan(wall_angle):
-                        error = normalize_angle(target_angle - wall_angle)
+                    current_wall_angle = sensed_data.get(f'{wall_type}_angle')
+                    if current_wall_angle is not None and not np.isnan(current_wall_angle):
+                        error = normalize_angle(target_angle - current_wall_angle)
                         speed = get_segmented_speed(error, self.final_angle_thresholds, self.final_angle_speeds)
-                        cmd.angular.z = speed
-                        rospy.loginfo_throttle(1, f"Fine-tuning {wall_type} | Target:{target_angle:.2f}, Current:{wall_angle:.2f}, Err:{error:.2f}")
+                        cmd.angular.z = speed * angular_sign_correction
+                        rospy.loginfo_throttle(1, f"Fine-tuning '{wall_type}' | Target:{target_angle:.2f}, Current:{current_wall_angle:.2f}, Err:{error:.2f}")
                         if abs(error) < self.final_angle_thresholds[-1]:
-                            self.state = "GOAL_REACHED"
-                        break
-            
+                            fine_tune_achieved = True
+                        break # Only use the first valid wall
+                if fine_tune_achieved:
+                    self.state = "GOAL_REACHED"
+
             elif self.rotation_sub_state == "ROTATING_COMPLEX_COARSE":
                 error_rad = normalize_angle_rad(self.odom_target_yaw - self.current_yaw)
                 speed = get_segmented_speed(np.degrees(error_rad), self.final_angle_thresholds, self.final_angle_speeds)
-                cmd.angular.z = speed
+                cmd.angular.z = speed * angular_sign_correction
                 if abs(np.degrees(error_rad)) < self.final_angle_thresholds[1]:
                     rospy.loginfo("Coarse rotation finished, switching to fine-tune.")
-                    if wall_angle is not None and not np.isnan(wall_angle):
+                    
+                    can_fine_tune = False
+                    if self.rotation_target_angles:
+                        target_wall_type = list(self.rotation_target_angles.keys())[0]
+                        current_angle = sensed_data.get(f'{target_wall_type}_angle')
+                        if current_angle is not None and not np.isnan(current_angle):
+                            can_fine_tune = True
+                    
+                    if can_fine_tune:
                         self.rotation_sub_state = "ROTATING_SIMPLE"
                     else:
-                        rospy.logwarn("Cannot fine-tune: wall angle not detected. Mission complete.")
+                        rospy.logwarn(f"Cannot fine-tune: target wall not detected after coarse rotation. Mission complete.")
                         self.state = "GOAL_REACHED"
-
+            
             elif self.rotation_sub_state == "ROTATING_BY_ODOM":
                 error_rad = normalize_angle_rad(self.odom_target_yaw - self.current_yaw)
                 speed = get_segmented_speed(np.degrees(error_rad), self.odom_angle_thresholds, self.odom_angle_speeds)
-                cmd.angular.z = speed
-                if abs(np.degrees(error_rad)) < self.final_angle_thresholds[-1]:
-                    rospy.loginfo("Odom rotation finished.")
+                cmd.angular.z = speed * angular_sign_correction
+                if abs(np.degrees(error_rad)) < self.odom_angle_thresholds[-1]:
+                    rospy.loginfo("Odom-only rotation finished.")
                     self.state = "GOAL_REACHED"
 
         elif self.state == "GOAL_REACHED":

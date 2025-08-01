@@ -163,10 +163,9 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-#   src/mainA.py
   src/A_to_C_motor.py
   src/control.py
-  src/s_shape.py
+  scripts/s_shape.py
   scripts/main_control.py
 
 
