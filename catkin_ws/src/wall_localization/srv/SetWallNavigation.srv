@@ -13,6 +13,7 @@ float64 target_angle
 # 當 target_angle 為 0.0 時，指定要對齊的牆面 ("front", "left", "right","rear")
 # 其他情況下此欄位無效，可為空字串 ""
 string align_to_wall
+bool use_odometry
 ---
 # Response
 bool success

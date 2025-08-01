@@ -92,6 +92,33 @@ class MainController:
             rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
             return False
 
+    def navigate_by_odometry(self, forward=0.0, left=0.0, angle=0.0):
+        """
+        所有距離單位為米(m)，角度單位為度(deg)。
+        """
+        rospy.loginfo(f"Executing ODOMETRY navigation: move forward={forward}m, left={left}m, turn angle={angle}deg")
+        try:
+            response = self.wall_nav_client(
+                target_front_distance=forward if forward > 0 else -1.0,
+                target_rear_distance=-forward if forward < 0 else -1.0,
+                target_left_distance=left if left > 0 else -1.0,
+                target_right_distance=-left if left < 0 else -1.0,
+                target_angle=angle,
+                align_to_wall="",
+                use_odometry=True 
+            )
+            
+            if response.success:
+                rospy.loginfo(f"Odometry navigation successful: {response.message}")
+                return True
+            else:
+                rospy.logerr(f"Odometry navigation failed: {response.message}")
+                return False
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call for odometry navigation failed: {e}")
+            return False
+
 
     # def detect_and_navigate_to_orange(self, search_timeout_sec=120.0):
     #     """
