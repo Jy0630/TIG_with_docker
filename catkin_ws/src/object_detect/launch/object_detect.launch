@@ -4,7 +4,7 @@
     <!-- <node name="orange_detection_srv" pkg="object_detect" type="orange_detection_srv.py" output="screen" /> -->
 
     <!-- 上升機構摘橘子的微調 -->
-    <node name="orange_adjustment_srv" pkg="object_detect" type="orange_adjustment_srv.py" output="screen" />
+    <node name="orange_taker_server_node" pkg="object_detect" type="orange_taker_srv.py" output="screen" />
 
     <!-- 咖啡指令視覺辨識 -->
     <!-- <node name="coffee_supply" pkg="object_detect" type="coffee_supply.py" output="screen" /> -->
@@ -13,4 +13,5 @@
     <!-- <node name="coffee_detection" pkg="object_detect" type="coffee_detection.py" output="screen" /> -->
 
     <!-- <node name="orange_detection" pkg="object_detect" type="orange_detection.py" output="screen" /> -->
+    
 </launch>
