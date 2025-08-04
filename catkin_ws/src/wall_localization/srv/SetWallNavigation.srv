@@ -6,7 +6,6 @@ float64 target_right_distance
 float64 target_angle
 string align_to_wall
 bool use_odometry
-
 ---
 # Response
 bool success

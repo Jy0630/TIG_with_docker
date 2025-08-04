@@ -5,7 +5,6 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import Twist, Point
 from line_follower.srv import SetLineFollower, SetLineFollowerResponse
-# NEW: 匯入我們新建立的 Service 類型
 from line_follower.srv import SetCameraState
 
 class MecanumController:
@@ -19,7 +18,7 @@ class MecanumController:
 
         self.load_params()
         
-        # NEW: 設定 Service Client 以便控制攝影機
+        # Service Client 以便控制攝影機
         rospy.loginfo("Waiting for '/line_detect/set_camera_state' service...")
         try:
             rospy.wait_for_service('/line_detect/set_camera_state', timeout=5.0)
@@ -37,7 +36,7 @@ class MecanumController:
         if req.enable:
             if not self.is_active:
                 rospy.loginfo("Received request to ENABLE line follower.")
-                # NEW: 啟用攝影機
+                # 啟用攝影機
                 try:
                     resp = self.set_camera_state_client(True)
                     if not resp.success:
@@ -66,7 +65,7 @@ class MecanumController:
                 
                 self.is_active = False
                 
-                # NEW: 關閉攝影機
+                # 關閉攝影機
                 try:
                     self.set_camera_state_client(False)
                     rospy.loginfo("Camera shutdown command sent.")
@@ -124,7 +123,6 @@ class MecanumController:
 if __name__ == '__main__':
     try:
         mc = MecanumController()
-        # 初始化旋轉狀態旗標
         mc.is_rotating = False
         rospy.spin() 
     except rospy.ROSInterruptException:

@@ -1,4 +1,3 @@
-import time
 import cv2
 import numpy as np
 import pyrealsense2 as rs
@@ -7,7 +6,7 @@ import rospy
 from std_msgs.msg import String
 import rospkg
 import os
-from object_detect.srv import DetectCoffee, DetectCoffeeResponse
+from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
 # =============================================================================
 # Class: RealSenseCamera
 # 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
@@ -216,7 +215,7 @@ class CoffeeSupply:
         for det in detections:
             name = det['class_name'].lower()
             self.positions[name] = det['xyz']
-        # print("CoffeeSupply.positions:", self.positions)  # debug
+
 
     def get_relative_position(self, from_name, to_name):
         from_pos = self.positions.get(from_name.lower())
@@ -304,19 +303,19 @@ class CoffeeSupplyDetectionNode:
         self.coffee_pub = rospy.Publisher("/coffee", String, queue_size=1)
 
         #rosservice
-        self.service = rospy.Service('detect_coffee_srv', DetectCoffee, self.handle_detect_coffee)
+        self.service = rospy.Service('detect_coffee_srv', DetectCoffeeSupply, self.handle_detect_coffee)
         rospy.loginfo("Coffee Supply Detection Service Ready.")
 
     def handle_detect_coffee(self, req):
         depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
         if depth_intrin is None:
             rospy.logwarn("No frames from camera.")
-            return DetectCoffeeResponse(success=False, target_name="", target_xyz=[])
+            return DetectCoffeeSupplyResponse(success=False, target_name="", target_xyz=[])
         im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
 
         if not detections:
             rospy.loginfo("No detections.")
-            return DetectCoffeeResponse(success=False, target_name="", target_xyz=[])
+            return DetectCoffeeSupplyResponse(success=False, target_name="", target_xyz=[])
 
         coffee = CoffeeSupply(detections)
         success = coffee.coffee_command()
@@ -332,7 +331,7 @@ class CoffeeSupplyDetectionNode:
         cv2.imshow('detection', im_out)
         cv2.waitKey(1)
 
-        return DetectCoffeeResponse(success=success, target_name=target, target_xyz=target_xyz if target_xyz else [])
+        return DetectCoffeeSupplyResponse(success=success, target_name=target, target_xyz=target_xyz if target_xyz else [])
     
     def spin(self):
         rospy.spin()
@@ -345,11 +344,11 @@ if __name__ == '__main__':
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
-        # model_path = '/home/allen3483982838/Object_Detection_Workspace/src/object_detection/scripts/coffee_supply.pt'
-        
         node = CoffeeSupplyDetectionNode(model_path)
         node.spin()
+
     except rospy.ROSInterruptException:
         print("ROS node interrupted.")
+        
     except Exception as e:
         print(f"An error occurred: {e}")

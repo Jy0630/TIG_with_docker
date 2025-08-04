@@ -86,6 +86,7 @@ class LineDetectorHybridThreshold:
         top_roi = display_image[:roi_start_row, :]
 
 
+        # 呼叫新的偵測函數
         pixel_deviation, angle_deviation, main_line_center_x = self.detect_line(bottom_roi)
         intersection_type = self.detect_intersection(top_roi, main_line_center_x)
 
@@ -121,6 +122,10 @@ class LineDetectorHybridThreshold:
 
 
     def detect_line(self, roi):
+        """
+        NEW & IMPROVED
+        偵測線條，並根據面積和寬度過濾輪廓
+        """
         thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
@@ -149,14 +154,18 @@ class LineDetectorHybridThreshold:
             cx = int(M["m10"] / M["m00"])
             pixel_deviation = cx - (roi.shape[1] // 2)
             line_center_x = cx
+            
             rect = cv2.minAreaRect(largest_contour)
             rect_width, rect_height = rect[1]
             angle = rect[2]
+            
             if rect_width < rect_height:
                 angle_deviation = angle + 90
             else:
                 angle_deviation = angle
+                
             cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
+
         return pixel_deviation, angle_deviation, line_center_x
 
 
