@@ -25,10 +25,10 @@
     </node>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_front_tf"
-          args="-0.215 -0.21375 0 0.067 0 0 base_link lidar_front_frame" respawn="true" />
+          args="-0.225 -0.21375 0 0 0 0 base_link lidar_front_frame" respawn="true" />
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar_rear_tf"
-          args="0.215 0.21375 0 3.14159 0 0 base_link lidar_rear_frame" respawn="true" />
+          args="0.225 0.21375 0 3.14159 0 0 base_link lidar_rear_frame" respawn="true" />
           
     <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_merged_laser_tf"
           args="0 0 0 0 0 0 base_link merged_laser_frame" respawn="true" />

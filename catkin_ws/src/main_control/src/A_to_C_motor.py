@@ -21,9 +21,9 @@ def A_to_C_motor():
     # Create a Twist message
     vel_msg = Twist()
 
-    def move_forward(duration, speed):
-        vel_msg.linear.x = speed  # Move forward
-        vel_msg.angular.z = 0.0  # No rotation
+    def move_forward(duration, speed_x, angular_z):
+        vel_msg.linear.x = speed_x  # Move forward
+        vel_msg.angular.z = angular_z  # Set rotation speed
         start_time = rospy.Time.now().to_sec()
         while rospy.Time.now().to_sec() - start_time < duration:
             velocity_publisher.publish(vel_msg)
@@ -63,17 +63,19 @@ def A_to_C_motor():
 
 
     def A_to_C():
-        move_forward(5, 0.25)  # Move forward for 7.4 seconds at 0.25 m/s
-        stop_robot()
-        sleep(1)                 # 1-second delay
+        # left_move(5, 0.3)  # Move forward for 5 seconds at 0.3 m/s
+        # stop_robot()
+        # sleep(1)                 # 1-second delay
 
-        move_forward(5, -0.25)  # Move forward for 7.4 seconds at 0.25 m/s
+        move_forward(2.25, 0.39, 0.85)  # Move forward for 7.4 seconds at 0.25 m/s
         stop_robot()
         sleep(1)   
-
-        turn_left(5, 0.5)
-        stop_robot()
-        sleep(1)
+        # move_forward(5, -0.3)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1)  
+        # turn_left(5, 0.5)
+        # stop_robot()
+        # sleep(1)
 
         # move_forward(5, -0.5)  # Move forward for 7.4 seconds at 0.25 m/s
         # stop_robot()

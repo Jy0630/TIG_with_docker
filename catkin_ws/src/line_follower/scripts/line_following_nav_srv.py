@@ -5,6 +5,8 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import Twist, Point
 from line_follower.srv import SetLineFollower, SetLineFollowerResponse
+# NEW: 匯入我們新建立的 Service 類型
+from line_follower.srv import SetCameraState
 
 class MecanumController:
     def __init__(self):
@@ -12,84 +14,81 @@ class MecanumController:
         rospy.loginfo("'line_following_node' (Service Server) started")
         
         self.cmd_vel_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=1)
-        
-        # self.detection_sub = rospy.Subscriber('/line_detect/detection_data', Point, self.control_callback)
         self.detection_sub = None 
         self.is_active = False 
 
         self.load_params()
         
-        # 建立 Service Server
-        # 當收到名為 'set_line_follower' 的服務請求時，呼叫 self.handle_set_line_follower 函式
+        # NEW: 設定 Service Client 以便控制攝影機
+        rospy.loginfo("Waiting for '/line_detect/set_camera_state' service...")
+        try:
+            rospy.wait_for_service('/line_detect/set_camera_state', timeout=5.0)
+            self.set_camera_state_client = rospy.ServiceProxy('/line_detect/set_camera_state', SetCameraState)
+            rospy.loginfo("Service client for camera control is connected.")
+        except rospy.ROSException:
+            rospy.logerr("Service '/line_detect/set_camera_state' not available. Shutting down.")
+            rospy.signal_shutdown("Camera control service not found.")
+            return
+
         self.service = rospy.Service('set_line_follower', SetLineFollower, self.handle_set_line_follower)
         rospy.loginfo("Service 'set_line_follower' is ready.")
 
-    # Service 的處理函式
     def handle_set_line_follower(self, req):
-        """
-        這個函式會在收到 Service 請求時被呼叫。
-        """
-        # 如果請求是要啟動 (enable=True)
         if req.enable:
-            # 只有在目前是停止狀態時才需要啟動
             if not self.is_active:
                 rospy.loginfo("Received request to ENABLE line follower.")
-                # 建立訂閱者，開始接收循線數據並呼叫 control_callback
+                # NEW: 啟用攝影機
+                try:
+                    resp = self.set_camera_state_client(True)
+                    if not resp.success:
+                        rospy.logerr("Failed to enable camera: %s", resp.message)
+                        return SetLineFollowerResponse(success=False, message="Failed to enable camera.")
+                except rospy.ServiceException as e:
+                    rospy.logerr("Service call to enable camera failed: %s", e)
+                    return SetLineFollowerResponse(success=False, message="Service call failed.")
+                
                 self.detection_sub = rospy.Subscriber('/line_detect/detection_data', Point, self.control_callback)
                 self.is_active = True
-                return SetLineFollowerResponse(success=True, message="Line follower has been enabled.")
+                self.is_rotating = False # 重置旋轉狀態
+                return SetLineFollowerResponse(success=True, message="Line follower and camera have been enabled.")
             else:
-                rospy.logwarn("Line follower is already enabled. No action taken.")
+                rospy.logwarn("Line follower is already enabled.")
                 return SetLineFollowerResponse(success=True, message="Already enabled.")
-
-        # 如果請求是要停止 (enable=False)
         else:
-            # 只有在目前是啟動狀態時才需要停止
             if self.is_active:
                 rospy.loginfo("Received request to DISABLE line follower.")
-                # 取消訂閱 control_callback 就不會再被觸發
                 if self.detection_sub:
                     self.detection_sub.unregister()
                     self.detection_sub = None
                 
-                # 發送一個零速指令，確保機器人完全停止
                 stop_msg = Twist()
                 self.cmd_vel_pub.publish(stop_msg)
                 
                 self.is_active = False
-                return SetLineFollowerResponse(success=True, message="Line follower has been disabled and robot stopped.")
+                
+                # NEW: 關閉攝影機
+                try:
+                    self.set_camera_state_client(False)
+                    rospy.loginfo("Camera shutdown command sent.")
+                except rospy.ServiceException as e:
+                    rospy.logwarn("Service call to disable camera failed: %s", e)
+                
+                return SetLineFollowerResponse(success=True, message="Line follower has been disabled and robot stopped. Camera shut down.")
             else:
-                rospy.logwarn("Line follower is already disabled. No action taken.")
+                rospy.logwarn("Line follower is already disabled.")
                 return SetLineFollowerResponse(success=True, message="Already disabled.")
 
     def load_params(self):
-        # Pixel thresholds (單位: 像素)
-        self.pixel_thresh_1 = rospy.get_param('~pixel_thresh_1', 20)
-        self.pixel_thresh_2 = rospy.get_param('~pixel_thresh_2', 120)
-        self.pixel_thresh_3 = rospy.get_param('~pixel_thresh_3', 220)
-        
-        # Angle thresholds (單位: 度)
-        self.angle_thresh_1 = rospy.get_param('~angle_thresh_1', 30)
-        self.angle_thresh_2 = rospy.get_param('~angle_thresh_2', 50)
-        
-        # Forward speed
-        self.fwd_speed_normal = rospy.get_param('~fwd_speed_normal', 0.4)
-        self.fwd_speed_correct_1 = rospy.get_param('~fwd_speed_correct_1', 0.3)
-        self.fwd_speed_correct_2 = rospy.get_param('~fwd_speed_correct_2', 0.2)
-        self.fwd_speed_correct_3 = rospy.get_param('~fwd_speed_correct_3', 0.1)
-        self.fwd_speed_rotate_1 = rospy.get_param('~fwd_speed_rotate_1', 0.2)
-        self.fwd_speed_rotate_2 = rospy.get_param('~fwd_speed_rotate_2', 0.1)
-        
-        # Lateral speed
-        self.lat_speed_correct_1 = rospy.get_param('~lat_speed_correct_1', 0.1)
-        self.lat_speed_correct_2 = rospy.get_param('~lat_speed_correct_2', 0.2)
-        self.lat_speed_correct_3 = rospy.get_param('~lat_speed_correct_3', 0.2)
-        
-        # Rotation speed
-        self.rot_speed_correct_1 = rospy.get_param('~rot_speed_correct_1', 0.3)
-        self.rot_speed_correct_2 = rospy.get_param('~rot_speed_correct_2', 0.4)
-        
-        rospy.loginfo("Parameters loaded successfully.")
+        self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 50)
+        self.pixel_thresh_large = rospy.get_param('~pixel_thresh_large', 120)
+        self.angle_thresh_rotate = rospy.get_param('~angle_thresh_rotate', 180)
+        self.angle_thresh_ok = rospy.get_param('~angle_thresh_ok', 180)
+        self.fwd_speed_normal = rospy.get_param('~fwd_speed_normal', 0.38)
+        self.fwd_speed_correct = rospy.get_param('~fwd_speed_correct', 0.3)
+        self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.035)
+        self.lat_speed_correct_large = rospy.get_param('~lat_speed_correct_large', 0.035)
+        self.rot_speed_correct = rospy.get_param('~rot_speed_correct', 0.15)
+        rospy.loginfo("Simplified parameters loaded successfully.")
 
     def control_callback(self, data):
         pixel_deviation = data.x
@@ -97,36 +96,36 @@ class MecanumController:
         vel_msg = Twist()
         abs_pixel_dev = abs(pixel_deviation)
         abs_angle_dev = abs(angle_deviation)
-        
-        if abs_pixel_dev > self.pixel_thresh_3:
-            vel_msg.linear.x = self.fwd_speed_correct_3
-            vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_3
-            vel_msg.angular.z = 0
-        elif abs_pixel_dev > self.pixel_thresh_2:
-            vel_msg.linear.x = self.fwd_speed_correct_2
-            vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_2
-            vel_msg.angular.z = 0
-        elif abs_pixel_dev > self.pixel_thresh_1:
-            vel_msg.linear.x = self.fwd_speed_correct_1
-            vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_1
-            vel_msg.angular.z = 0
+
+        if abs_angle_dev > self.angle_thresh_rotate or (self.is_rotating and abs_angle_dev > self.angle_thresh_ok):
+            if not self.is_rotating:
+                 rospy.logwarn("Large angle deviation detected ({:.1f} deg). Rotating in place.".format(angle_deviation))
+                 self.is_rotating = True
+            vel_msg.linear.x = 0.0
+            vel_msg.linear.y = 0.0
+            vel_msg.angular.z = -np.sign(angle_deviation) * self.rot_speed_correct
         else:
-            vel_msg.linear.y = 0
-            if abs_angle_dev > self.angle_thresh_2:
-                vel_msg.linear.x = self.fwd_speed_rotate_2
-                vel_msg.angular.z = np.sign(angle_deviation) * self.rot_speed_correct_2
-            elif abs_angle_dev > self.angle_thresh_1:
-                vel_msg.linear.x = self.fwd_speed_rotate_1
-                vel_msg.angular.z = np.sign(angle_deviation) * self.rot_speed_correct_1
-            else:
+            self.is_rotating = False
+            if abs_pixel_dev <= self.pixel_thresh_normal:
                 vel_msg.linear.x = self.fwd_speed_normal
-                vel_msg.angular.z = 0
+                vel_msg.linear.y = 0.0
+                vel_msg.angular.z = 0.0
+            elif abs_pixel_dev <= self.pixel_thresh_large:
+                vel_msg.linear.x = self.fwd_speed_correct
+                vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_small
+                vel_msg.angular.z = 0.0
+            else:
+                vel_msg.linear.x = self.fwd_speed_correct
+                vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_large
+                vel_msg.angular.z = 0.0
         
         self.cmd_vel_pub.publish(vel_msg)
 
 if __name__ == '__main__':
     try:
         mc = MecanumController()
+        # 初始化旋轉狀態旗標
+        mc.is_rotating = False
         rospy.spin() 
     except rospy.ROSInterruptException:
         rospy.loginfo("line_following_node shutted down")

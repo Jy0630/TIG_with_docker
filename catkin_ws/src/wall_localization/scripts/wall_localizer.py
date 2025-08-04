@@ -117,7 +117,7 @@ class WallLocalizer:
         output_msg.data = publish_data
         self.output_publisher.publish(output_msg)
 
-        # rospy.loginfo_throttle(1.0, f"已發布數據: {[f'{v:.3f}' if not np.isnan(v) else 'NaN' for v in publish_data]}")
+        # rospy.loginfo_throttle(1.0, f"已發布數據: {[f'{v:.3f}' if not np.isnan(v) else 'NaN' for v in publish_data]}")T
 
     def run(self):
         rospy.spin()
