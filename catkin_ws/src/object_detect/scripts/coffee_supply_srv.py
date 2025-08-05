@@ -3,9 +3,8 @@ import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
 import rospy
-from std_msgs.msg import String
-import rospkg
-import os
+import math
+import rospkg, os
 from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
 # =============================================================================
 # Class: RealSenseCamera
@@ -31,7 +30,7 @@ class RealSenseCamera:
         self.pipeline.start(config)
         # 建立對齊物件，將深度圖對齊到彩色圖的座標系
         self.align = rs.align(rs.stream.color)
-        print("RealSense Camera Initialized.")
+        rospy.loginfo("RealSense Camera Initialized.")
 
     def get_aligned_images(self):
         """
@@ -61,7 +60,7 @@ class RealSenseCamera:
         停止 pipeline，釋放攝影機資源。
         """
         self.pipeline.stop()
-        print("RealSense Camera Stopped.")
+        rospy.loginfo("RealSense Camera Stopped.")
 
 # =============================================================================
 # Class: ObjectDetector
@@ -77,7 +76,7 @@ class ObjectDetector:
         """
         self.model = YOLO(model_path)
         self.conf_thresh = conf_thresh
-        print(f"Object Detector Initialized with model: {model_path}")
+        rospy.loginfo(f"Object Detector Initialized with model: {model_path}")
 
     def get_median_depth(self, depth_frame, u, v, sample_size=5):
         """
@@ -147,18 +146,10 @@ class ObjectDetector:
                 uy = (box[1] + box[3]) / 2
                 
                 # --- 核心計算邏輯 ---
-                # 1. 取得物體最前方表面的深度
                 surface_dis = self.get_median_depth(aligned_depth_frame, ux, uy)
                 if surface_dis is None:
-                    continue # 若無法取得有效深度，跳過此物體
-
-                # 2. 估算物體的實際半徑 (公尺)
-                object_radius = self.estimate_object_radius(box, surface_dis, depth_intrin)
-                
-                # 3. 計算物體中心的深度 (表面深度 + 半徑)
-                center_dis = surface_dis + object_radius
-
-                # 4. 使用「中心深度」來計算三維座標 (X, Y, Z)
+                    continue # 若無法取得有效深度，跳過此物體             
+                center_dis = surface_dis
                 center_camera_xyz = rs.rs2_deproject_pixel_to_point(depth_intrin, (ux, uy), center_dis)
                 center_camera_xyz = [round(v, 2) for v in center_camera_xyz] # 四捨五入到小數點後三位
                 world_x = center_camera_xyz[0]
@@ -202,19 +193,20 @@ class ObjectDetector:
         return im_out, detections
     
 # =============================================================================
-# Class: CoffeeSupply
+# Class: App
 # 目的：偵測圖卡指令
 # =============================================================================
 
-class CoffeeSupply:
-    def __init__(self, detections):
+class App:
+    def __init__(self, model_path):
+        rospy.loginfo("Initializing Coffee Supply Server ......")
+        self.camera = RealSenseCamera()
+        self.detector = ObjectDetector(model_path)
+        rospy.loginfo("Coffee Supply initialized. Starting detection loop...")
+        self.coffee_supply_service = rospy.Service('CoffeeSupply', DetectCoffeeSupply, self.coffee_command)
+        rospy.loginfo("Service 'CoffeeSupply' is ready.")
         self.positions = {}
-        self.table_pub = rospy.Publisher("/table", String, queue_size = 1)
-        self.coffee_pub = rospy.Publisher("/coffee", String, queue_size = 1)
 
-        for det in detections:
-            name = det['class_name'].lower()
-            self.positions[name] = det['xyz']
 
 
     def get_relative_position(self, from_name, to_name):
@@ -241,114 +233,79 @@ class CoffeeSupply:
         # print("get_all_relative 回傳：", result)  # debug
         return result
 
-    def coffee_command(self):
-        import math
-        rels = self.get_all_relative()
-        if not rels:
-            print("[咖啡指令] 找不到 black 或 white 目標")
-            return False
+    def coffee_command(self, req):
+        try:
+            # rospy.loginfo("-------------------------------")
+            depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
+            _, detections = self.detector.detect(img_color, depth_frame, depth_intrin)
 
-        def calc_distance(vec):
-            if vec is None:
-                return None
-            return round(math.sqrt(sum(x**2 for x in vec)), 3)
+            if depth_intrin is None or img_color is None or depth_frame is None:
+                rospy.logwarn("Camera frame is invalid.")
+                return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
+            for det in detections:
+                name = det['class_name'].lower()
+                # rospy.loginfo(f"[DEBUG] Detected object: {name} @ {det['xyz']}")
+                self.positions[name] = det['xyz']
 
-        dist_tree = calc_distance(rels['tree_to_target'])
-        dist_home = calc_distance(rels['home_to_target'])
+            rels = self.get_all_relative()
 
-        if (dist_tree is not None and dist_home is not None and
-            abs(dist_tree - 0.16) < 0.01 and 
-            abs(dist_home - 0.07) < 0.01):
+            if not rels:
+                rospy.loginfo("can not find the supply card")
+                return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
+
+            def calc_distance(vec):
+                if vec is None:
+                    return None
+                return round(math.sqrt(sum(x**2 for x in vec)), 3)
+
+            dist_tree = calc_distance(rels['tree_to_target'])
+            dist_home = calc_distance(rels['home_to_target'])
+
+            if (dist_tree is not None and dist_home is not None and
+                abs(dist_tree - 0.16) < 0.01 and 
+                abs(dist_home - 0.07) < 0.01):
+                target = rels['target_name']
+                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "1")
+            elif (dist_tree is not None and dist_home is not None and
+                abs(dist_tree - 0.075) < 0.01 and 
+                abs(dist_home - 0.155) < 0.01):
+                target = rels['target_name']
+                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "2")
+            elif (dist_tree is not None and dist_home is not None and
+                abs(dist_tree - 0.205) < 0.01 and 
+                abs(dist_home - 0.15) < 0.01):
+                target = rels['target_name']
+                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "3")
+            elif (dist_tree is not None and dist_home is not None and
+                abs(dist_tree - 0.155) < 0.01 and 
+                abs(dist_home - 0.2) < 0.01):
+                target = rels['target_name']
+                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "4")
             
-            # 直接從 rels 取得目標名稱
-            target = rels['target_name']
-            self.table_pub.publish("1")
-            self.coffee_pub.publish(f"{target}")
-            return True
-        elif (dist_tree is not None and dist_home is not None and
-            abs(dist_tree - 0.075) < 0.01 and 
-            abs(dist_home - 0.155) < 0.01):
-            
-            # 直接從 rels 取得目標名稱
-            target = rels['target_name']
-            self.table_pub.publish("2")
-            self.coffee_pub.publish(f"{target}")
-            return True
-        elif (dist_tree is not None and dist_home is not None and
-            abs(dist_tree - 0.205) < 0.01 and 
-            abs(dist_home - 0.15) < 0.01):
-            target = rels['target_name']# 直接從 rels 取得目標名稱
-            self.table_pub.publish("3")
-            self.coffee_pub.publish(f"{target}")
-            return True
-        elif (dist_tree is not None and dist_home is not None and
-            abs(dist_tree - 0.155) < 0.01 and 
-            abs(dist_home - 0.2) < 0.01):
-            target = rels['target_name']# 直接從 rels 取得目標名稱
-            self.table_pub.publish("4")
-            self.coffee_pub.publish(f"{target}")
-            return True
+            return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
+        
+        except Exception as e:
+            rospy.logerr(f"An error occurred during detection: {e}")
+            return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
 
-        return False
-
-class CoffeeSupplyDetectionNode:
-    def __init__(self, model_path):
-        #初始化節點
-        rospy.init_node("coffee_supply_detection_node")
-
-        #結合前面
-        self.camera = RealSenseCamera()
-        self.detector = ObjectDetector(model_path)
-        self.table_pub = rospy.Publisher("/table", String, queue_size=1)
-        self.coffee_pub = rospy.Publisher("/coffee", String, queue_size=1)
-
-        #rosservice
-        self.service = rospy.Service('detect_coffee_srv', DetectCoffeeSupply, self.handle_detect_coffee)
-        rospy.loginfo("Coffee Supply Detection Service Ready.")
-
-    def handle_detect_coffee(self, req):
-        depth_intrin, img_color, aligned_depth_frame = self.camera.get_aligned_images()
-        if depth_intrin is None:
-            rospy.logwarn("No frames from camera.")
-            return DetectCoffeeSupplyResponse(success=False, target_name="", target_xyz=[])
-        im_out, detections = self.detector.detect(img_color, aligned_depth_frame, depth_intrin)
-
-        if not detections:
-            rospy.loginfo("No detections.")
-            return DetectCoffeeSupplyResponse(success=False, target_name="", target_xyz=[])
-
-        coffee = CoffeeSupply(detections)
-        success = coffee.coffee_command()
-        rels = coffee.get_all_relative()
-        if rels and 'target_name' in rels:
-            target = rels['target_name']
-            target_xyz = rels['home_to_target']
-        else:
-            target = ""
-            target_xyz = []
-
-        # 可選：顯示影像結果視窗
-        cv2.imshow('detection', im_out)
-        cv2.waitKey(1)
-
-        return DetectCoffeeSupplyResponse(success=success, target_name=target, target_xyz=target_xyz if target_xyz else [])
-    
-    def spin(self):
-        rospy.spin()
+        
+    def shutdown(self):
         self.camera.stop()
         cv2.destroyAllWindows()
+        rospy.loginfo("Coffee Supply Server Shutdown.")
 
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('coffee_supply_srv')
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
         model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
-        node = CoffeeSupplyDetectionNode(model_path)
-        node.spin()
+        server = App(model_path)
+        rospy.on_shutdown(server.shutdown)
+        rospy.spin()  
 
     except rospy.ROSInterruptException:
-        print("ROS node interrupted.")
-        
+        pass
     except Exception as e:
-        print(f"An error occurred: {e}")
+        rospy.logerr(f"Failed to start Coffee Supply Server: {e}")
