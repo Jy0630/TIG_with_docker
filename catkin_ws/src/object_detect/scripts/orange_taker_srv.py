@@ -112,7 +112,7 @@ class ObjectDetector:
 
 class App:
     def __init__(self, model_path):
-        rospy.loginfo("Initializing Orange Taker Server (no service mode)...")
+        rospy.loginfo("Initializing Orange Taker Server ......")
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
         self.velocity_publisher = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
@@ -171,13 +171,11 @@ class App:
 
                     elif world_x > 0:
                         rospy.loginfo("Orange is to the right.")
-                        twist_msg.linear.x = 0.1
-                        twist_msg.angular.z = -0.2
+                        twist_msg.linear.y = -0.15
 
                     elif world_x < 0:
                         rospy.loginfo("Orange is to the left.")
-                        twist_msg.linear.x = 0.1
-                        twist_msg.angular.z = 0.2
+                        twist_msg.linear.y = 0.15
 
                     if self.is_twist_different(twist_msg, self.previous_twist):
                         self.velocity_publisher.publish(twist_msg)
