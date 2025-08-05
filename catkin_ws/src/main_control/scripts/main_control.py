@@ -14,6 +14,9 @@ import time
 from object_detect.srv import DetectObjects
 from object_detect.srv import  DetectCoffee
 
+from dc_motor.srv import SetHeight
+from step_motor import SetDistance
+
 class MainController:
 
     def __init__(self):
@@ -313,6 +316,39 @@ class MainController:
     #         rospy.logerr(f"Coffee detection service call failed: {e}")
     #         return None
 
+    #步進
+    def call_set_distance(motor_id, distance):
+    # 根據 motor_id 選擇對應的 service 名稱
+        if motor_id == 1:
+            service_name = 'cmd_distance_srv1'
+        elif motor_id == 2:
+            service_name = 'cmd_distance_srv2'
+        else:
+            rospy.logerr(f"無效的 motor_id: {motor_id}，只能是 1 或 2")
+            return False
+
+        rospy.wait_for_service(service_name)
+
+        try:
+            service_proxy = rospy.ServiceProxy(service_name, SetDistance)
+            resp = service_proxy(distance)
+            return resp.result == "end"
+        except rospy.ServiceException as e:
+            rospy.logerr(f"呼叫 {service_name} 失敗: {e}")
+        return False
+    
+    #dc
+    def call_set_height(height=None, relative=None):
+        rospy.wait_for_service('set_height')
+        try:
+            service_proxy = rospy.ServiceProxy('set_height', SetHeight)
+            h = height if height is not None else 0.0
+            r = relative if relative is not None else 0.0
+            resp = service_proxy(h, r)
+            return resp.success
+        except rospy.ServiceException as e:
+            rospy.logerr(f"SetHeight service call failed: {e}")
+            return False
     def run_competition_flow(self):
         current_state = "CROSS_BRIDGE"  # 初始狀態
         
@@ -326,12 +362,79 @@ class MainController:
                 else:
                     current_state = "ERROR_RECOVERY"
 ##########################################################################################
+#看菜單拿咖啡
+            elif current_state == "first_up":
+                if self.call_set_height(45):
+                    current_state = "first_front"
+                else:
+                    current_state = "ERROR_RECOVERY"
+##########################################################################################
+            elif current_state == "first_front":
+                if self.call_set_distance(1,):
+                    current_state = "first_down"
+                else:
+                    current_state = "ERROR_RECOVERY"        
+######################################################################
+            elif current_state == "first_down":
+                if self.call_set_height(36):
+                    current_state = "first_withdraw"
+                else:
+                    current_state = "ERROR_RECOVERY"
+#################################################################
+            elif current_state == "first_withdraw":
+                if self.call_set_distance(1,):
+                    current_state = "put_coffee_down1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+#################################################################
 
-
+#放到桌子上的咖啡
+            elif current_state == "put_coffee_down1":
+                if self.call_set_height():
+                    current_state = "first_put_coffee"
+                else:
+                    current_state = "ERROR_RECOVERY"
+##################################################################
+            elif current_state == "first_put_coffee":
+                if self.call_set_distance(1,):
+                    current_state = "put_coffe_down2"
+                else:
+                    current_state = "ERROR_RECOVERY"
+####################################################################
+            elif current_state == "put_coffe_down2":
+                if self.call_set_height():
+                    current_state = "second_put_coffee"
+                else:
+                    current_state = "ERROR_RECOVERY"
+###################################################################
+            elif current_state == "second_put_coffee":
+                if self.call_set_distance(1,):
+                    current_state = "put_coffe_down3"
+                else:
+                    current_state = "ERROR_RECOVERY"
+###########################################################
+            elif current_state == "put_coffe_down3":
+                if self.call_set_height():
+                    current_state = "third_put_coffee"
+                else:
+                    current_state = "ERROR_RECOVERY"
+##############################################################
+            elif current_state == "third_put_coffee":
+                if self.call_set_distance(1,):
+                    current_state = "put_coffe_down4"
+                else:
+                    current_state = "ERROR_RECOVERY"
+################################################################
+            elif current_state == "put_coffe_down4":
+                if self.call_set_height():
+                    current_state = "1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+#########################################################
             elif current_state == "1":
                 rospy.loginfo("All tasks completed successfully!")
                 break
-
+    
             elif current_state == "ERROR_RECOVERY":
                 rospy.logerr("A task failed. Entering error recovery mode.")
                 break
