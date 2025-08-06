@@ -4,7 +4,7 @@
 import rospy
 from std_msgs.msg import String
 from line_follower.srv import SetLineFollower
-# from wall_localization.srv import SetWallNavigation
+from wall_localization.srv import SetWallNavigation
 from geometry_msgs.msg import Twist
 
 from object_detect.srv import DetectOrangeGoal
@@ -15,7 +15,7 @@ from object_detect.srv import DetectObjects
 from object_detect.srv import  DetectCoffee
 
 from dc_motor.srv import SetHeight
-from step_motor import SetDistance
+from step_motor.srv import SetDistance
 
 class MainController:
 
@@ -25,22 +25,22 @@ class MainController:
 
         # 等待所有服務啟動
         # rospy.loginfo("Waiting for services...")
-        rospy.wait_for_service('set_line_follower')
-        self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
+        # rospy.wait_for_service('set_line_follower')
+        # self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
         # self.cmd_vel_pub = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
         # rospy.loginfo("Publisher to '/cmd_vel' created.")
 
         # rospy.wait_for_service('navigate_by_wall')
-        # self.wall_nav_client = rospy.ServiceProxy('navigate_by_wall', SetWallNavigation)
+        self.wall_nav_client = rospy.ServiceProxy('navigate_by_wall', SetWallNavigation)
         
         # rospy.wait_for_service('detect_orange_goal')
         # self.orange_detect_client = rospy.ServiceProxy('detect_orange_goal', DetectOrangeGoal)
         
         rospy.loginfo("All services are ready.")
 
-        self.last_intersection_type = None
-        self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
-        rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
+        # self.last_intersection_type = None
+        # self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
+        # rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
 
         #object detection
         # rospy.wait_for_service('detect_objects_srv')
@@ -52,82 +52,82 @@ class MainController:
 
         self.run_competition_flow()
 
-    def intersection_callback(self, msg):
-        self.last_intersection_type = msg.data
+    # def intersection_callback(self, msg):
+    #     self.last_intersection_type = msg.data
 
-    def toggle_line_follower(self, enable):
-        """Start or stop the line follower service."""
-        try:
-            response = self.line_follower_client(enable)
-            rospy.loginfo(f"Line follower toggled to {enable}: {response.message}")
-            return response.success
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
-            return False
-
-    def follow_line_until_t_junction(self, timeout_sec=35.0):
-        """Line following task until a T-junction is detected."""
-        rospy.loginfo("Executing task: Follow line until T-junction...")
-        self.last_intersection_type = ""
-        if not self.toggle_line_follower(True):
-            return False
-        start_time = rospy.Time.now()
-        rate = rospy.Rate(10)
-        while not rospy.is_shutdown():
-            if self.last_intersection_type == "T_JUNCTION" or self.last_intersection_type == "LEFT_FORK" or self.last_intersection_type == "RIGHT_FORK":
-                rospy.loginfo("Intersection detected! Stopping.")
-                return self.toggle_line_follower(False)
-            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping.")
-                return self.toggle_line_follower(False)
-            rate.sleep()
-        return self.toggle_line_follower(False)
-
-    # def navigate_by_wall(self, front=-1.0, rear=-1.0, left=-1.0, right=-1.0, angle=-1.0, align_wall=""):
-    #     """Control the robot to navigate by wall."""
-    #     rospy.loginfo(f"Executing task: Wall navigation with params: front={front}, right={right}, angle={angle}...")
+    # def toggle_line_follower(self, enable):
+    #     """Start or stop the line follower service."""
     #     try:
-    #         response = self.wall_nav_client(
-    #             target_front_distance=front, target_rear_distance=rear,
-    #             target_left_distance=left, target_right_distance=right,
-    #             target_angle=angle, align_to_wall=align_wall
-    #         )
-    #         rospy.loginfo(f"Navigation result: {response.message}")
+    #         response = self.line_follower_client(enable)
+    #         rospy.loginfo(f"Line follower toggled to {enable}: {response.message}")
     #         return response.success
     #     except rospy.ServiceException as e:
-    #         rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
+    #         rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
     #         return False
+
+    # def follow_line_until_t_junction(self, timeout_sec=35.0):
+    #     """Line following task until a T-junction is detected."""
+    #     rospy.loginfo("Executing task: Follow line until T-junction...")
+    #     self.last_intersection_type = ""
+    #     if not self.toggle_line_follower(True):
+    #         return False
+    #     start_time = rospy.Time.now()
+    #     rate = rospy.Rate(10)
+    #     while not rospy.is_shutdown():
+    #         if self.last_intersection_type == "T_JUNCTION" or self.last_intersection_type == "LEFT_FORK" or self.last_intersection_type == "RIGHT_FORK":
+    #             rospy.loginfo("Intersection detected! Stopping.")
+    #             return self.toggle_line_follower(False)
+    #         if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
+    #             rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping.")
+    #             return self.toggle_line_follower(False)
+    #         rate.sleep()
+    #     return self.toggle_line_follower(False)
+
+    def navigate_by_wall(self, front=-1.0, rear=-1.0, left=-1.0, right=-1.0, angle=-1.0, align_wall=""):
+        """Control the robot to navigate by wall."""
+        rospy.loginfo(f"Executing task: Wall navigation with params: front={front}, right={right}, angle={angle}...")
+        try:
+            response = self.wall_nav_client(
+                target_front_distance=front, target_rear_distance=rear,
+                target_left_distance=left, target_right_distance=right,
+                target_angle=angle, align_to_wall=align_wall
+            )
+            rospy.loginfo(f"Navigation result: {response.message}")
+            return response.success
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
+            return False
 
 # 在 MainController 類別中，與您現有的 navigate_by_wall 函式並列
 
-    # def navigate_by_odometry(self, forward=0.0, left=0.0, angle=0.0):
-    #     """
-    #     基於里程計的導航函式。
-    #     所有距離單位為米(m)，角度單位為度(deg)。
-    #     """
-    #     rospy.loginfo(f"Executing ODOMETRY navigation: move forward={forward}m, left={left}m, turn angle={angle}deg")
-    #     try:
-    #     # 關鍵：將 use_odometry 設為 True
-    #         response = self.wall_nav_client(
-    #             target_front_distance=forward if forward > 0 else -1.0,
-    #             target_rear_distance=-forward if forward < 0 else -1.0,
-    #             target_left_distance=left if left > 0 else -1.0,
-    #             target_right_distance=-left if left < 0 else -1.0,
-    #             target_angle=angle,
-    #             align_to_wall="", # 里程計模式下，此參數無效
-    #             use_odometry=True  # <--- 模式切換的總開關！
-    #         )
+    def navigate_by_odometry(self, forward=0.0, left=0.0, angle=0.0):
+        """
+        基於里程計的導航函式。
+        所有距離單位為米(m)，角度單位為度(deg)。
+        """
+        rospy.loginfo(f"Executing ODOMETRY navigation: move forward={forward}m, left={left}m, turn angle={angle}deg")
+        try:
+        # 關鍵：將 use_odometry 設為 True
+            response = self.wall_nav_client(
+                target_front_distance=forward if forward > 0 else -1.0,
+                target_rear_distance=-forward if forward < 0 else -1.0,
+                target_left_distance=left if left > 0 else -1.0,
+                target_right_distance=-left if left < 0 else -1.0,
+                target_angle=angle,
+                align_to_wall="", # 里程計模式下，此參數無效
+                use_odometry=True  # <--- 模式切換的總開關！
+            )
         
-    #         if response.success:
-    #             rospy.loginfo(f"Odometry navigation successful: {response.message}")
-    #             return True
-    #         else:
-    #             rospy.logerr(f"Odometry navigation failed: {response.message}")
-    #             return False
+            if response.success:
+                rospy.loginfo(f"Odometry navigation successful: {response.message}")
+                return True
+            else:
+                rospy.logerr(f"Odometry navigation failed: {response.message}")
+                return False
 
-    #     except rospy.ServiceException as e:
-    #         rospy.logerr(f"Service call for odometry navigation failed: {e}")
-    #         return False
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call for odometry navigation failed: {e}")
+            return False
         
     # def move_for_duration(self, linear_x=0.0, linear_y=0.0, angular_z=0.0, duration=1.0):
     #         """
@@ -316,8 +316,8 @@ class MainController:
     #         rospy.logerr(f"Coffee detection service call failed: {e}")
     #         return None
 
-    #步進
-    def call_set_distance(motor_id, distance):
+    #步進距離
+    def call_set_distance(self, motor_id, distance):
     # 根據 motor_id 選擇對應的 service 名稱
         if motor_id == 1:
             service_name = 'cmd_distance_srv1'
@@ -338,7 +338,7 @@ class MainController:
         return False
     
     #dc
-    def call_set_height(height=None, relative=None):
+    def call_set_height(self, height=None, relative=None):
         rospy.wait_for_service('set_height')
         try:
             service_proxy = rospy.ServiceProxy('set_height', SetHeight)
@@ -349,89 +349,127 @@ class MainController:
         except rospy.ServiceException as e:
             rospy.logerr(f"SetHeight service call failed: {e}")
             return False
-    def run_competition_flow(self):
-        current_state = "CROSS_BRIDGE"  # 初始狀態
         
-
+    def run_competition_flow(self):
+        current_state = "hide"        
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
-##########################################################################################
-            if current_state == "CROSS_BRIDGE":
-                if self.follow_line_until_t_junction():
-                    current_state = "1"
+
+            if current_state == "hide":
+                if self.call_set_distance(1,-7):
+                    current_state = "first_up"
                 else:
                     current_state = "ERROR_RECOVERY"
-##########################################################################################
-#看菜單拿咖啡
+
             elif current_state == "first_up":
-                if self.call_set_height(45):
+                if self.call_set_height(50):
                     current_state = "first_front"
                 else:
                     current_state = "ERROR_RECOVERY"
-##########################################################################################
+
             elif current_state == "first_front":
-                if self.call_set_distance(1,):
+                if self.navigate_by_wall(front=1.13, angle=0.0, align_wall="right"):
+                    current_state = "1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1":
+                if self.navigate_by_wall(right=0.51, angle=0.0, align_wall="right"):
+                    current_state = "2"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "2":
+                if self.navigate_by_wall(front=1.04, angle=0.0, align_wall="right"):
+                    current_state = "3"
+                else:
+                    current_state = "ERROR_RECOVERY"
+            
+            elif current_state == "first_front":
+                if self.call_set_distance(1,-33):
                     current_state = "first_down"
                 else:
                     current_state = "ERROR_RECOVERY"        
-######################################################################
+
             elif current_state == "first_down":
-                if self.call_set_height(36):
+                if self.call_set_height(34):
                     current_state = "first_withdraw"
                 else:
                     current_state = "ERROR_RECOVERY"
 #################################################################
             elif current_state == "first_withdraw":
-                if self.call_set_distance(1,):
-                    current_state = "put_coffee_down1"
+                if self.call_set_distance(1,28):
+                    current_state = "4"
                 else:
                     current_state = "ERROR_RECOVERY"
 #################################################################
+            elif current_state == "4":
+                if self.navigate_by_wall(front=1.14, angle=0.0, align_wall="right"):
+                    current_state = "5"
+                else:
+                    current_state = "ERROR_RECOVERY"
 
-#放到桌子上的咖啡
+            elif current_state == "5":
+                if self.navigate_by_wall(angle=180):
+                    current_state = "6"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "6":
+                if self.navigate_by_wall(left=2.328, angle=0.0, align_wall="left"):
+                    current_state = "7"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "7":
+                if self.navigate_by_wall(rear=1.471, angle=0.0, align_wall="left"):
+                    current_state = "put_coffee_down1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
             elif current_state == "put_coffee_down1":
-                if self.call_set_height():
+                if self.call_set_height(4):
                     current_state = "first_put_coffee"
                 else:
                     current_state = "ERROR_RECOVERY"
 ##################################################################
             elif current_state == "first_put_coffee":
-                if self.call_set_distance(1,):
-                    current_state = "put_coffe_down2"
+                if self.call_set_distance(1,-12):
+                    current_state = "put_coffee_down2"
                 else:
                     current_state = "ERROR_RECOVERY"
 ####################################################################
             elif current_state == "put_coffe_down2":
-                if self.call_set_height():
+                if self.call_set_height(30):
                     current_state = "second_put_coffee"
                 else:
                     current_state = "ERROR_RECOVERY"
 ###################################################################
             elif current_state == "second_put_coffee":
-                if self.call_set_distance(1,):
+                if self.call_set_distance(1,24):
                     current_state = "put_coffe_down3"
                 else:
                     current_state = "ERROR_RECOVERY"
 ###########################################################
-            elif current_state == "put_coffe_down3":
-                if self.call_set_height():
-                    current_state = "third_put_coffee"
-                else:
-                    current_state = "ERROR_RECOVERY"
-##############################################################
-            elif current_state == "third_put_coffee":
-                if self.call_set_distance(1,):
-                    current_state = "put_coffe_down4"
-                else:
-                    current_state = "ERROR_RECOVERY"
-################################################################
-            elif current_state == "put_coffe_down4":
-                if self.call_set_height():
-                    current_state = "1"
-                else:
-                    current_state = "ERROR_RECOVERY"
+#             elif current_state == "put_coffe_down3":
+#                 if self.call_set_height():
+#                     current_state = "third_put_coffee"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+# ##############################################################
+#             elif current_state == "third_put_coffee":
+#                 if self.call_set_distance(1,):
+#                     current_state = "put_coffe_down4"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+# ################################################################
+#             elif current_state == "put_coffe_down4":
+#                 if self.call_set_height():
+#                     current_state = "1"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
 #########################################################
-            elif current_state == "1":
+            elif current_state == "put_coffe_down3":
                 rospy.loginfo("All tasks completed successfully!")
                 break
     

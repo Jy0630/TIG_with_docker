@@ -3,17 +3,17 @@
   <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
 
   <!-- line_following -->
-  <node pkg="line_follower" type="line_detect_srv.py" name="line_detector" output="screen"/>
-  <node pkg="line_follower" type="line_following_nav_srv.py" name="line_follower_server" output="screen"/>
+  <!-- <node pkg="line_follower" type="line_detect_srv.py" name="line_detector" output="screen"/>
+  <node pkg="line_follower" type="line_following_nav_srv.py" name="line_follower_server" output="screen"/> -->
 
 <!-- wall_localization -->
  <!-- launch rplidar -->
-  <!-- <include file="$(find rplidar_ros)/launch/merged_lidar.launch"/> -->
+  <include file="$(find rplidar_ros)/launch/merged_lidar.launch"/>
 <!-- launch odom -->
-  <!-- <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" /> -->
+  <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
 
   <!-- launch laser line extraction -->
-  <!-- <node name="line_extractor" pkg="laser_line_extraction" type="line_extraction_node">
+  <node name="line_extractor" pkg="laser_line_extraction" type="line_extraction_node">
     <param name="~frequency" value="30.0" />
     <param name="~frame_id" value="merged_laser_frame" />
     <param name="~scan_topic" value="/scan_merged" />
@@ -29,18 +29,31 @@
     <param name="~min_split_dist" value="0.04" />
     <param name="~outlier_dist" value="0.06" />
     <param name="~min_line_points" value="10" />
-  </node> -->
-
+  </node>
+  
   <!-- launch wall localization -->
-  <!-- <node name="wall_localizer" pkg="wall_localization" type="wall_localizer.py" output="screen" /> -->
+  <node name="wall_localizer" pkg="wall_localization" type="wall_localizer.py" output="screen" />
 
-  <!-- <node pkg="wall_localization" type="wall_navigator_srv.py" name="wall_navigator_server" output="screen"/> -->
+  <node pkg="wall_localization" type="wall_navigator_srv.py" name="wall_navigator_server" output="screen"/>
 
 <!-- object_detect -->
 
   <!-- <node pkg="object_detect" type="orange_detection_srv.py" name="object_detect_server" output="screen"/> -->
 
-    
+<!-- upper_control_motor launch -->
+  <!-- Mega板通訊 -->
+  <node name="serial_node_mega_step" pkg="rosserial_python" type="serial_node.py">
+      <param name="port" type="string" value="/dev/arduino_mega_step"/>
+      <param name="baud" type="int" value="57600"/>
+  </node>
+
+  <node name="serial_node_mega_merge" pkg="rosserial_python" type="serial_node.py">
+      <param name="port" type="string" value="/dev/arduino_mega_merge"/>
+      <param name="baud" type="int" value="57600"/>
+  </node>
+  <node pkg="step_motor" type="step" name="step" output="screen"/>
+  <node pkg="dc_motor" type="wall" name="dc_motor" output="screen"/>
+  
 <!-- main_control -->
   <node pkg="main_control" type="main_control.py" name="main_control_client" output="screen" respawn="false"/>
 

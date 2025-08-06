@@ -206,9 +206,10 @@ RUN apt-get install ros-noetic-robot-localization -y
 RUN pip install pyserial
 
 
-# Install rqt_plot
+# Install rqt_plot and rosserial_python
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-noetic-rqt-plot \
+    ros-noetic-rosserial-python \
     && rm -rf /var/lib/apt/lists/*
 
 
