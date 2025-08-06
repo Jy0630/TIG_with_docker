@@ -7,8 +7,8 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
 
   // 建立兩個 service client
-  ros::ServiceClient client1 = nh.serviceClient<hello::SetDistance>("cmd_distance_srv1");
-  ros::ServiceClient client2 = nh.serviceClient<hello::SetDistance>("cmd_distance_srv2");
+  ros::ServiceClient client1 = nh.serviceClient<step_motor::SetDistance>("cmd_distance_srv1");
+  ros::ServiceClient client2 = nh.serviceClient<step_motor::SetDistance>("cmd_distance_srv2");
 
   while (ros::ok()) {
     int motor_id;
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
       continue;
     }
 
-    hello::SetDistance srv;
+    step_motor::SetDistance srv;
     srv.request.distance = distance_cm;
 
     // 呼叫對應馬達的 service
