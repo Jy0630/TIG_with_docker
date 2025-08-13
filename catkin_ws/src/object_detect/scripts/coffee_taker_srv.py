@@ -9,6 +9,13 @@ import rospkg
 from geometry_msgs.msg import Twist
 from object_detect.srv import DetectCoffee, DetectCoffeeResponse
 
+
+# =============================================================================
+# Class: RealSenseCamera
+# 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
+#      包含初始化、取得對齊的影像幀、以及關閉攝影機。
+# =============================================================================
+
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
@@ -43,6 +50,11 @@ class RealSenseCamera:
         depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
         img_color = np.asanyarray(color_frame.get_data())
         return depth_intrin, img_color, depth_frame
+
+# =============================================================================
+# Class: ObjectDetector
+# 目的: 封裝所有與 YOLOv8 物件偵測和 3D 座標計算相關的邏輯。
+# =============================================================================
 
 class ObjectDetector:
     def __init__(self, model_path, conf_thresh=0.7):
@@ -109,6 +121,11 @@ class ObjectDetector:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
         return detections, img_with_detections
+    
+# =============================================================================
+# Class: App
+# 目的：偵測圖卡指令
+# =============================================================================
 
 class App:
     def __init__(self, model_path):

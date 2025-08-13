@@ -6,6 +6,8 @@ import rospy
 import math
 import rospkg, os
 from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
+
+
 # =============================================================================
 # Class: RealSenseCamera
 # 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
