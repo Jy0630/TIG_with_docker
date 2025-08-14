@@ -167,6 +167,7 @@ catkin_install_python(PROGRAMS
   src/control.py
   scripts/s_shape.py
   scripts/main_control.py
+  scripts/coffee.py
 
 
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

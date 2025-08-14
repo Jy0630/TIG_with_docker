@@ -52,7 +52,7 @@
       <param name="baud" type="int" value="57600"/>
   </node>
   <node pkg="step_motor" type="step" name="step" output="screen"/>
-  <node pkg="dc_motor" type="wall" name="dc_motor" output="screen"/>
+  <!-- <node pkg="dc_motor" type="wall" name="dc_motor" output="screen"/> -->
   
 <!-- main_control -->
   <node pkg="main_control" type="main_control.py" name="main_control_client" output="screen" respawn="false"/>
