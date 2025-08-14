@@ -9,10 +9,14 @@ import rospkg
 from geometry_msgs.msg import Twist
 from object_detect.srv import DetectCoffee, DetectCoffeeResponse
 
+# =============================================================================
+# Class: RealSenseCamera
+# 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
+# =============================================================================
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
-        self.started = False  # 新增 flag
+        self.started = False
         config = rs.config()
         config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
         config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
@@ -28,7 +32,7 @@ class RealSenseCamera:
     def stop(self):
         if self.started:
             self.pipeline.stop()
-            self.started = False  # 停止後修改 flag
+            self.started = False
             rospy.loginfo("RealSense Camera Stopped.")
         else:
             rospy.logwarn("RealSense pipeline was not started; skip stopping.")
@@ -44,8 +48,12 @@ class RealSenseCamera:
         img_color = np.asanyarray(color_frame.get_data())
         return depth_intrin, img_color, depth_frame
 
+# =============================================================================
+# Class: ObjectDetector
+# 目的: 封裝 YOLOv8 物件偵測和 3D 座標計算相關邏輯
+# =============================================================================
 class ObjectDetector:
-    def __init__(self, model_path, conf_thresh=0.7):
+    def __init__(self, model_path, conf_thresh=0.8):
         self.model = YOLO(model_path)
         self.conf_thresh = conf_thresh
 
@@ -96,7 +104,7 @@ class ObjectDetector:
                     continue
                 center_camera_xyz = rs.rs2_deproject_pixel_to_point(depth_intrin, (ux, uy), object_dis)
                 world_x = center_camera_xyz[0]
-                world_y = center_camera_xyz[2]  
+                world_y = center_camera_xyz[2]
                 world_z = -center_camera_xyz[1]
                 detections.append({
                     'class_name': class_name,
@@ -104,22 +112,26 @@ class ObjectDetector:
                 })
 
                 # Draw detection box and text
-                cv2.rectangle(img_with_detections, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 2)
-                cv2.putText(img_with_detections, f"{class_name}: {object_dis:.2f}m", (int(box[0]), int(box[1])-10),
+                cv2.rectangle(img_with_detections, (int(box[0]), int(box[1])), 
+                              (int(box[2]), int(box[3])), (0, 255, 0), 2)
+                cv2.putText(img_with_detections, f"{class_name}: {object_dis:.2f}m", 
+                            (int(box[0]), int(box[1])-10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
         return detections, img_with_detections
 
+# =============================================================================
+# Class: App
+# 目的：偵測咖啡並回傳 Service
+# =============================================================================
 class App:
     def __init__(self, model_path):
-        rospy.loginfo("Initializing Coffee Taker Server (no service mode)...")
+        rospy.loginfo("Initializing Coffee Taker Server...")
         self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
         self.velocity_publisher = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
-        self.previous_twist = Twist()  
-        rospy.loginfo("Coffee Taker initialized. Starting detection loop...")
-        self.orange_service = rospy.Service('Coffee Taker', DetectCoffee, self.handle_get_orange_depth)
-        rospy.loginfo("Service 'Coffee Taker' is ready.")
+        self.previous_twist = Twist()
+        self.orange_service = rospy.Service('CoffeeTaker', DetectCoffee, self.handle_get_orange_depth)
+        rospy.loginfo("Service 'CoffeeTaker' is ready.")
 
     def is_twist_different(self, t1, t2):
         return any([
@@ -134,7 +146,7 @@ class App:
     def handle_get_orange_depth(self, req):
         try:
             coffee_type = req.coffee_type
-            rate = rospy.Rate(10) 
+            rate = rospy.Rate(10)
             while not rospy.is_shutdown():
                 depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
                 if depth_intrin is None:
@@ -143,46 +155,38 @@ class App:
                     continue
 
                 detections, img_with_detections = self.detector.detect(img_color, depth_frame, depth_intrin, coffee_type)
+                cv2.imshow("Detection", img_with_detections)
+
+                # 按下 q 鍵退出
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    rospy.loginfo("Quit signal received from cv2 window.")
+                    cv2.destroyAllWindows()
+                    return DetectCoffeeResponse(success=False, depth=0.0)
 
                 if detections:
-                    cv2.imshow("Detection", img_with_detections)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        rospy.loginfo("Quit signal received from cv2 window.")
-                        break
-
                     closest_orange = min(detections, key=lambda d: d['xyz'][1])
                     depth_y = closest_orange['xyz'][1]
                     world_x = closest_orange['xyz'][0]
 
                     twist_msg = Twist()
                     twist_msg.linear.x = 0.0
-                    twist_msg.linear.y = 0.0
-                    twist_msg.linear.z = 0.0
-                    twist_msg.angular.x = 0.0
-                    twist_msg.angular.y = 0.0
-                    twist_msg.angular.z = 0.0
-
-                    if abs(world_x) < 0.1:
+                    rospy.loginfo(f"Coffee X: {world_x:.3f}")
+                    offset_left = 0.117
+                    if abs(world_x + offset_left) < 0.01:
                         rospy.loginfo(f"Coffee is centered. Depth: {depth_y:.2f}m")
-                        self.velocity_publisher.publish(twist_msg)  
+                        self.velocity_publisher.publish(twist_msg)
+                        cv2.destroyAllWindows()
                         return DetectCoffeeResponse(success=True, depth=float(depth_y))
-
-                    elif world_x > 0:
+                    elif (world_x + offset_left) > 0:
                         rospy.loginfo("Coffee is to the right.")
-                        twist_msg.linear.x = 0.1
-                        twist_msg.angular.z = -0.2
-
-                    elif world_x < 0:
+                        twist_msg.linear.x = 0.15
+                    elif (world_x + offset_left) < 0:
                         rospy.loginfo("Coffee is to the left.")
-                        twist_msg.linear.x = 0.1
-                        twist_msg.angular.z = 0.2
+                        twist_msg.linear.x = -0.15
 
                     if self.is_twist_different(twist_msg, self.previous_twist):
                         self.velocity_publisher.publish(twist_msg)
                         self.previous_twist = twist_msg
-                    else:
-                        rospy.loginfo("Same twist. Not publishing.")
-
                 else:
                     rospy.loginfo("No Coffee detected.")
 
@@ -207,8 +211,7 @@ if __name__ == '__main__':
         model_path = os.path.join(package_path, 'scripts', 'coffee.pt')
         server = App(model_path)
         rospy.on_shutdown(server.shutdown)
-        rospy.spin()  
-
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
     except Exception as e:

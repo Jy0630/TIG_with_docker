@@ -72,5 +72,6 @@ catkin_install_python(PROGRAMS
   scripts/orange_taker_srv.py
   scripts/orange_detection_srv.py
   scripts/orange_detection.py
+  scripts/object_detection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
