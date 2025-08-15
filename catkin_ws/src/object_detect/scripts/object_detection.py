@@ -138,7 +138,6 @@ class App:
                     print("--- Detected Objects ---")
                     for det in detections:
                         print(f"[{det['class_name']}] conf={det['conf']} XYZ={det['xyz']}")
-
                 key = cv2.waitKey(1)
                 if key & 0xFF == ord('q') or key == 27:
                     print("Exiting...")
