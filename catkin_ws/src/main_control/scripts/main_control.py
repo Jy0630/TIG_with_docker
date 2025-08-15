@@ -8,6 +8,7 @@ from wall_localization.srv import SetWallNavigation
 from geometry_msgs.msg import Twist
 
 from object_detect.srv import DetectOrangeGoal
+from object_detect.srv import DetectCoffee, DetectCoffeeRequest
 import numpy as np
 import time
 
@@ -327,6 +328,20 @@ class MainController:
     #         rospy.logerr(f"Coffee detection service call failed: {e}")
     #         return None
 
+
+    def call_coffee_service(coffee_type):
+        rospy.wait_for_service('CoffeeTaker')
+        try:
+            detect_coffee = rospy.ServiceProxy('CoffeeTaker', DetectCoffee)
+            req = DetectCoffeeRequest(coffee_type=coffee_type)
+            resp = detect_coffee(req)
+            if resp.success:
+                rospy.loginfo(f"Depth: {resp.depth:.2f} m, Step Motor: {resp.step_motor}")
+            else:
+                rospy.logwarn("No coffee detected.")
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call failed: {e}")
+            
     #步進距離
     def call_set_distance(self, motor_id, distance):
         service_name = 'cmd_distance_srv'
@@ -409,6 +424,8 @@ class MainController:
             rate.sleep()
         
         return False
+    
+
 
         
     def run_competition_flow(self):
