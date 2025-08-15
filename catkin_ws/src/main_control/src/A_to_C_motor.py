@@ -63,17 +63,11 @@ def A_to_C_motor():
 
 
     def A_to_C():
-        # left_move(5, 0.3)  # Move forward for 5 seconds at 0.3 m/s
-        # stop_robot()
-        # sleep(1)                 # 1-second delay
-
-        move_forward(6, 0.3, 0)  # Move forward for 6 seconds at 0.3 m/s
+        left_move(1, 0.15)  # Move forward for 5 seconds at 0.15 m/s
         stop_robot()
-        sleep(1)   
+        sleep(1)                 # 1-second delay
 
-        move_forward(6, -0.3, 0)  # Move forward for 6 seconds at -0.3 m/s
-        stop_robot()
-        sleep(1)  
+
         # turn_left(5, 0.5)
         # stop_robot()
         # sleep(1)

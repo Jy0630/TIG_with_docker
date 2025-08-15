@@ -45,6 +45,7 @@ class MainController:
 
         # 訂閱者：用於接收來自 Arduino 的 /slider_current_height 回報
         self.current_height = None # 用於儲存最新的高度回報值
+        self.motor_num = None
         self.height_sub = rospy.Subscriber('/slider_current_height', Float32, self.height_callback)
         rospy.loginfo("Created Subscriber to /slider_current_height for feedback.")
         
@@ -63,6 +64,7 @@ class MainController:
         # self.detect_client = rospy.ServiceProxy('detect_coffee_srv',DetectCoffee)
 
         self.run_competition_flow()
+        
 
     # def intersection_callback(self, msg):
     #     self.last_intersection_type = msg.data
@@ -329,7 +331,7 @@ class MainController:
     #         return None
 
 
-    def call_coffee_service(coffee_type):
+    def call_coffee_service(self, coffee_type):
         rospy.wait_for_service('CoffeeTaker')
         try:
             detect_coffee = rospy.ServiceProxy('CoffeeTaker', DetectCoffee)
@@ -337,10 +339,14 @@ class MainController:
             resp = detect_coffee(req)
             if resp.success:
                 rospy.loginfo(f"Depth: {resp.depth:.2f} m, Step Motor: {resp.step_motor}")
+                self.motor_num = resp.step_motor
+                return True
             else:
                 rospy.logwarn("No coffee detected.")
+                return False
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call failed: {e}")
+
             
     #步進距離
     def call_set_distance(self, motor_id, distance):
@@ -434,25 +440,44 @@ class MainController:
             rospy.loginfo(f"====== Current State: {current_state} ======")
 
             if current_state == "hide":
-                if self.call_set_distance(1, 10):
+                if self.call_set_distance(1, 10) and self.call_set_distance(2, 10):
                     current_state = "first_up"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            if current_state == "first_up":
-                if self.move_slider_to_height(50):
+            elif current_state == "first_up":
+                if self.move_slider_to_height(20.2):
                     current_state = "first_front"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "first_front":
-                if self.navigate_by_wall(front=1.3, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(front=1.4, angle=0.0, align_wall="right"):
                     current_state = "1"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "1":
-                if self.navigate_by_wall(right=0.56, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(right=0.6, angle=0.0, align_wall="right"):
+                    current_state = "1.4"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.4":
+                if self.call_coffee_service("black"):
+                    time.sleep(1)
+                    current_state = "1.45"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.45":
+                if self.navigate_by_wall(angle=0.0, align_wall="right"):
+                    current_state = "1.5"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.5":
+                if self.move_slider_to_height(50):
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -464,7 +489,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
             
             elif current_state == "3":
-                if self.call_set_distance(1, 29):
+                if self.call_set_distance(self.motor_num, 35):
                     current_state = "first_down"
                 else:
                     current_state = "ERROR_RECOVERY"        
@@ -476,7 +501,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 #################################################################
             elif current_state == "first_withdraw":
-                if self.call_set_distance(1, -31.8):
+                if self.call_set_distance(self.motor_num, -36.5):
                     current_state = "4"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -500,13 +525,19 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "4.6":
-                if self.call_set_distance(1, -0.4):
+                if self.call_set_distance(self.motor_num, -1.5):
+                    current_state = "4.7"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "4.7":
+                if self.navigate_by_wall(right=0.6, angle=0.0, align_wall="right"):
                     current_state = "5"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "5":
-                if self.navigate_by_wall(angle=179):
+                if self.navigate_by_odometry(angle=179):
                     current_state = "5.5"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -548,7 +579,7 @@ class MainController:
             #         current_state = "ERROR_RECOVERY"
 
             elif current_state == "7":
-                if self.navigate_by_wall(rear=1.471, angle=0.0, align_wall="left"):
+                if self.navigate_by_wall(rear=1.481, angle=0.0, align_wall="left"):
                     current_state = "put_coffee_down1"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -560,19 +591,19 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 # ##################################################################
             elif current_state == "first_put_coffee":
-                if self.call_set_distance(1, 12):
+                if self.call_set_distance(self.motor_num, 12):
                     current_state = "put_coffee_down2"
                 else:
                     current_state = "ERROR_RECOVERY"
-# ####################################################################
+# # ####################################################################
             elif current_state == "put_coffee_down2":
                 if self.move_slider_to_height(30):
                     current_state = "second_put_coffee"
                 else:
                     current_state = "ERROR_RECOVERY"
-# ###################################################################
+# # ###################################################################
             elif current_state == "second_put_coffee":
-                if self.call_set_distance(1, -12):
+                if self.call_set_distance(self.motor_num, -12):
                     current_state = "8.8"
                 else:
                     current_state = "ERROR_RECOVERY"
