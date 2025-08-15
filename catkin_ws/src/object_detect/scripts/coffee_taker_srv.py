@@ -161,7 +161,7 @@ class App:
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     rospy.loginfo("Quit signal received from cv2 window.")
                     cv2.destroyAllWindows()
-                    return DetectCoffeeResponse(success=False, depth=0.0)
+                    return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
 
                 if detections:
                     closest_orange = min(detections, key=lambda d: d['xyz'][1])
@@ -172,15 +172,22 @@ class App:
                     twist_msg.linear.x = 0.0
                     rospy.loginfo(f"Coffee X: {world_x:.3f}")
                     offset_left = 0.117
-                    if abs(world_x + offset_left) < 0.01:
+                    offset_right = -0.105
+                    if world_x > -(offset_left + offset_right) / 2:
+                        step = "2"  #right step motor
+                        offset = offset_right
+                    else:
+                        step = "1"  #left step motor
+                        offset = offset_left
+                    if abs(world_x + offset) < 0.01:
                         rospy.loginfo(f"Coffee is centered. Depth: {depth_y:.2f}m")
                         self.velocity_publisher.publish(twist_msg)
                         cv2.destroyAllWindows()
-                        return DetectCoffeeResponse(success=True, depth=float(depth_y))
-                    elif (world_x + offset_left) > 0:
+                        return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor = step)
+                    elif (world_x + offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
                         twist_msg.linear.x = 0.15
-                    elif (world_x + offset_left) < 0:
+                    elif (world_x + offset) < 0:
                         rospy.loginfo("Coffee is to the left.")
                         twist_msg.linear.x = -0.15
 
@@ -192,11 +199,11 @@ class App:
 
                 rate.sleep()
 
-            return DetectCoffeeResponse(success=False, depth=0.0)
+            return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
 
         except Exception as e:
             rospy.logerr(f"An error occurred during detection: {e}")
-            return DetectCoffeeResponse(success=False, depth=0.0)
+            return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
 
     def shutdown(self):
         self.camera.stop()
