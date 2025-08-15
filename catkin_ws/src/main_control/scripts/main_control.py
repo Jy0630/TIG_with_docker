@@ -470,13 +470,13 @@ class MainController:
                     current_state = "ERROR_RECOVERY"        
 
             elif current_state == "first_down":
-                if self.move_slider_to_height(31.75):
+                if self.move_slider_to_height(31.65):
                     current_state = "first_withdraw"
                 else:
                     current_state = "ERROR_RECOVERY"
 #################################################################
             elif current_state == "first_withdraw":
-                if self.call_set_distance(1, -32.8):
+                if self.call_set_distance(1, -31.8):
                     current_state = "4"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -487,13 +487,13 @@ class MainController:
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "4.3":
-                if self.move_slider_to_height(15):
-                    current_state = "4.5"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "4.3":
+            #     if self.move_slider_to_height(15):
+            #         current_state = "4.5"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
-            elif current_state == "4.5":
+            elif current_state == "4.3":
                 if self.move_slider_to_height(3.256):
                     current_state = "4.6"
                 else:
@@ -506,7 +506,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "5":
-                if self.navigate_by_wall(angle=90):
+                if self.navigate_by_wall(angle=179):
                     current_state = "5.5"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -518,18 +518,18 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "6":
-                if self.navigate_by_wall(rear=2.178, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(left=2.24, angle=0.0, align_wall="left"):
                     current_state = "6.5"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "6.5":
-                if self.navigate_by_wall(angle=90.0):
-                    current_state = "6.7"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "6.5":
+            #     if self.navigate_by_wall(angle=90.0):
+            #         current_state = "6.7"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
-            elif current_state == "6.7":
+            elif current_state == "6.5":
                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
                     current_state = "7"
                 else:
