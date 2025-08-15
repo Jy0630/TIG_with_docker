@@ -2,3 +2,4 @@ string coffee_type
 ---
 bool success
 float32 depth
+string step_motor
