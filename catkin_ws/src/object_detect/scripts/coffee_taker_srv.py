@@ -18,8 +18,8 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         self.started = False
         config = rs.config()
-        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
         try:
             self.pipeline.start(config)
             self.started = True
@@ -126,11 +126,10 @@ class ObjectDetector:
 class App:
     def __init__(self, model_path):
         rospy.loginfo("Initializing Coffee Taker Server...")
-        self.camera = RealSenseCamera()
-        self.detector = ObjectDetector(model_path)
+        self.detector = ObjectDetector(model_path)  # 保留 YOLO 模型在初始化
         self.velocity_publisher = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
         self.previous_twist = Twist()
-        self.orange_service = rospy.Service('CoffeeTaker', DetectCoffee, self.handle_get_orange_depth)
+        self.coffee_service = rospy.Service('CoffeeTaker', DetectCoffee, self.handle_get_coffee_depth)
         rospy.loginfo("Service 'CoffeeTaker' is ready.")
 
     def is_twist_different(self, t1, t2):
@@ -143,12 +142,17 @@ class App:
             t1.angular.z != t2.angular.z
         ])
 
-    def handle_get_orange_depth(self, req):
+    def handle_get_coffee_depth(self, req):
         try:
+            camera = RealSenseCamera()
+            if not camera.started:
+                rospy.logerr("Camera failed to start.")
+                return DetectCoffeeResponse(success=False, depth=0.0, step_motor="0")
+
             coffee_type = req.coffee_type
             rate = rospy.Rate(10)
             while not rospy.is_shutdown():
-                depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
+                depth_intrin, img_color, depth_frame = camera.get_aligned_images()
                 if depth_intrin is None:
                     rospy.loginfo("No camera data.")
                     rate.sleep()
@@ -157,33 +161,33 @@ class App:
                 detections, img_with_detections = self.detector.detect(img_color, depth_frame, depth_intrin, coffee_type)
                 cv2.imshow("Detection", img_with_detections)
 
-                # 按下 q 鍵退出
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     rospy.loginfo("Quit signal received from cv2 window.")
                     cv2.destroyAllWindows()
-                    return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
+                    camera.stop()
+                    return DetectCoffeeResponse(success=False, depth=0.0, step_motor="0")
 
                 if detections:
-                    closest_orange = min(detections, key=lambda d: d['xyz'][1])
-                    depth_y = closest_orange['xyz'][1]
-                    world_x = closest_orange['xyz'][0]
+                    closest_coffee = min(detections, key=lambda d: d['xyz'][1])
+                    depth_y = closest_coffee['xyz'][1]
+                    world_x = closest_coffee['xyz'][0]
 
                     twist_msg = Twist()
                     twist_msg.linear.y = 0.0
-                    rospy.loginfo(f"Coffee X: {world_x:.3f}")
                     offset_left = -0.117
                     offset_right = 0.15
                     if world_x > offset_left + offset_right / 2:
-                        step = 2  #right step motor
+                        step = 2
                         offset = offset_right
                     else:
-                        step = 1  #left step motor
+                        step = 1
                         offset = offset_left
                     if abs(world_x - offset) < 0.02:
                         rospy.loginfo(f"Coffee is centered. Depth: {depth_y:.2f}m")
                         self.velocity_publisher.publish(twist_msg)
                         cv2.destroyAllWindows()
-                        return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor = step)
+                        camera.stop()  # ⬅️ 偵測完成後關閉相機
+                        return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor=step)
                     elif (world_x - offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
                         twist_msg.linear.y = -0.15
