@@ -27,8 +27,8 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         config = rs.config()
         # 啟用 640x480 的深度和彩色影像流，幀率為 30fps
-        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
         self.pipeline.start(config)
         # 建立對齊物件，將深度圖對齊到彩色圖的座標系
         self.align = rs.align(rs.stream.color)
@@ -202,7 +202,6 @@ class ObjectDetector:
 class App:
     def __init__(self, model_path):
         rospy.loginfo("Initializing Coffee Supply Server ......")
-        self.camera = RealSenseCamera()
         self.detector = ObjectDetector(model_path)
         rospy.loginfo("Coffee Supply initialized. Starting detection loop...")
         self.coffee_supply_service = rospy.Service('CoffeeSupply', DetectCoffeeSupply, self.coffee_command)
@@ -232,28 +231,28 @@ class App:
             'tree_to_target': self.get_relative_position('tree', target),
             'target_name': target
         }
-        # print("get_all_relative 回傳：", result)  # debug
         return result
 
     def coffee_command(self, req):
+        camera = None
         try:
-            # rospy.loginfo("-------------------------------")
-            depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
-            _, detections = self.detector.detect(img_color, depth_frame, depth_intrin)
+            camera = RealSenseCamera()
 
+            depth_intrin, img_color, depth_frame = camera.get_aligned_images()
             if depth_intrin is None or img_color is None or depth_frame is None:
                 rospy.logwarn("Camera frame is invalid.")
                 return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
+
+            _, detections = self.detector.detect(img_color, depth_frame, depth_intrin)
+
             for det in detections:
                 name = det['class_name'].lower()
-                # rospy.loginfo(f"[DEBUG] Detected object: {name} @ {det['xyz']}")
                 self.positions[name] = det['xyz']
 
             rels = self.get_all_relative()
-
             if not rels:
-                rospy.loginfo("can not find the supply card")
-                return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
+                rospy.loginfo("Can not find the supply card")
+                return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
 
             def calc_distance(vec):
                 if vec is None:
@@ -264,38 +263,32 @@ class App:
             dist_home = calc_distance(rels['home_to_target'])
 
             if (dist_tree is not None and dist_home is not None and
-                abs(dist_tree - 0.16) < 0.01 and 
-                abs(dist_home - 0.07) < 0.01):
-                target = rels['target_name']
-                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "1")
+                abs(dist_tree - 0.16) < 0.01 and abs(dist_home - 0.07) < 0.01):
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], "1")
             elif (dist_tree is not None and dist_home is not None and
-                abs(dist_tree - 0.075) < 0.01 and 
-                abs(dist_home - 0.155) < 0.01):
-                target = rels['target_name']
-                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "2")
+                abs(dist_tree - 0.075) < 0.01 and abs(dist_home - 0.155) < 0.01):
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], "2")
             elif (dist_tree is not None and dist_home is not None and
-                abs(dist_tree - 0.205) < 0.01 and 
-                abs(dist_home - 0.15) < 0.01):
-                target = rels['target_name']
-                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "3")
+                abs(dist_tree - 0.205) < 0.01 and abs(dist_home - 0.15) < 0.01):
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], "3")
             elif (dist_tree is not None and dist_home is not None and
-                abs(dist_tree - 0.155) < 0.01 and 
-                abs(dist_home - 0.2) < 0.01):
-                target = rels['target_name']
-                return DetectCoffeeSupplyResponse(success = True, target_name = target, table = "4")
-            
-            return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
-        
+                abs(dist_tree - 0.155) < 0.01 and abs(dist_home - 0.2) < 0.01):
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], "4")
+
+            return DetectCoffeeSupplyResponse(False, "", "")
+
         except Exception as e:
             rospy.logerr(f"An error occurred during detection: {e}")
-            return DetectCoffeeSupplyResponse(success = False, target_name = "", table = "")
+            return DetectCoffeeSupplyResponse(False, "", "")
 
-        
+        finally:
+            if camera:
+                camera.stop()
+            cv2.destroyAllWindows()
+
     def shutdown(self):
-        self.camera.stop()
         cv2.destroyAllWindows()
         rospy.loginfo("Coffee Supply Server Shutdown.")
-
 
 if __name__ == '__main__':
     try:
