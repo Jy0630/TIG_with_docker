@@ -174,15 +174,16 @@ class App:
 
                     twist_msg = Twist()
                     twist_msg.linear.y = 0.0
-                    offset_left = -0.117
-                    offset_right = 0.15
+                    rospy.loginfo(f"Coffee X: {world_x:.3f}")
+                    offset_left = -0.13
+                    offset_right = 0.17
                     if world_x > offset_left + offset_right / 2:
                         step = 2
                         offset = offset_right
                     else:
                         step = 1
                         offset = offset_left
-                    if abs(world_x - offset) < 0.02:
+                    if abs(world_x - offset) < 0.015:
                         rospy.loginfo(f"Coffee is centered. Depth: {depth_y:.2f}m")
                         self.velocity_publisher.publish(twist_msg)
                         cv2.destroyAllWindows()
@@ -190,10 +191,10 @@ class App:
                         return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor=step)
                     elif (world_x - offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
-                        twist_msg.linear.y = -0.15
+                        twist_msg.linear.y = -0.1
                     elif (world_x - offset) < 0:
                         rospy.loginfo("Coffee is to the left.")
-                        twist_msg.linear.y = 0.15
+                        twist_msg.linear.y = 0.1
 
                     if self.is_twist_different(twist_msg, self.previous_twist):
                         self.velocity_publisher.publish(twist_msg)
