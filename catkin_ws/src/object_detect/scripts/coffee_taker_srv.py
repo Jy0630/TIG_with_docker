@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import cv2
+import time
 import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
@@ -183,25 +184,25 @@ class App:
                     else:
                         step = 1
                         offset = offset_left
-                    if abs(world_x - offset) < 0.015:
+                    if abs(world_x - offset) < 0.01:
                         rospy.loginfo(f"Coffee is centered. Depth: {depth_y:.2f}m")
                         self.velocity_publisher.publish(twist_msg)
+                        rospy.loginfo(world_x - offset)
                         cv2.destroyAllWindows()
                         camera.stop()  # ⬅️ 偵測完成後關閉相機
-                        return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor=step)
+                        return DetectCoffeeResponse(success=True, depth = float(depth_y), step_motor = int(step))
                     elif (world_x - offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
                         twist_msg.linear.y = -0.1
                     elif (world_x - offset) < 0:
                         rospy.loginfo("Coffee is to the left.")
                         twist_msg.linear.y = 0.1
-
-                    if self.is_twist_different(twist_msg, self.previous_twist):
-                        self.velocity_publisher.publish(twist_msg)
-                        self.previous_twist = twist_msg
+                    self.velocity_publisher.publish(twist_msg)
+                    time.sleep(1)
+                    twist_msg = Twist()
+                    self.velocity_publisher.publish(twist_msg)
                 else:
                     rospy.loginfo("No Coffee detected.")
-
                 rate.sleep()
 
             return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")

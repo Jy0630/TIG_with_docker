@@ -459,6 +459,12 @@ class MainController:
 
             elif current_state == "1":
                 if self.navigate_by_wall(right=0.6, angle=0.0, align_wall="right"):
+                    current_state = "1.3"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.3":
+                if self.navigate_by_wall(angle=0.0, align_wall="front"):
                     current_state = "1.4"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -466,15 +472,15 @@ class MainController:
             elif current_state == "1.4":
                 if self.call_coffee_service("black"):
                     time.sleep(1)
-                    current_state = "1.45"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "1.45":
-                if self.navigate_by_wall(angle=0.0, align_wall="right"):
                     current_state = "1.5"
                 else:
                     current_state = "ERROR_RECOVERY"
+
+            # elif current_state == "1.45":
+            #     if self.navigate_by_wall(angle=0.0, align_wall="right"):
+            #         current_state = "1.5"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
             elif current_state == "1.5":
                 if self.move_slider_to_height(50):
@@ -537,7 +543,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "5":
-                if self.navigate_by_odometry(angle=179):
+                if self.navigate_by_odometry(angle=170):
                     current_state = "5.5"
                 else:
                     current_state = "ERROR_RECOVERY"
