@@ -54,6 +54,6 @@
   <node pkg="step_motor" type="step" name="step" output="screen"/>
   
 <!-- main_control -->
-  <node pkg="main_control" type="coffee.py" name="coffee_client" output="screen" respawn="false"/>
+  <node pkg="main_control" type="main_control.py" name="coffee_client" output="screen" respawn="false"/>
 
 </launch>
