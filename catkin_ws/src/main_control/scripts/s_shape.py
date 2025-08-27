@@ -268,7 +268,7 @@ class MainController:
 
             elif current_state == "1":
                 # time.sleep(3)
-                if self.navigate_by_wall(right=2.32, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(right=2.3, angle=0.0, align_wall="right"):
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -283,23 +283,29 @@ class MainController:
 
             elif current_state == "3":
                 if self.move_for_duration(linear_x=0.4, angular_z=0.81, duration=2.0):
-                    current_state = "4"
+                    current_state = "3.1"
                 else:
                     current_state = "ERROR_RECOVERY"
 ##########################################################################################
-            elif current_state == "4":
-                if self.navigate_by_wall(left=2.97, angle=0.0, align_wall="front"):
-                    current_state = "5"
+            elif current_state =="3.1":
+                if self.navigate_by_wall(angle=0.0, align_wall="rear"):
+                    current_state = "4"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "5":
-                if self.navigate_by_wall(rear=2.94,angle=0.0, align_wall="rear"):
-                    current_state = "6"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "4":
+                # if self.navigate_by_wall(left=2.97, angle=0.0, align_wall="front"):
+                #     current_state = "5"
+                # else:
+                #     current_state = "ERROR_RECOVERY"
+
+            # elif current_state == "5":
+            #     if self.navigate_by_wall(rear=2.94,angle=0.0, align_wall="rear"):
+            #         current_state = "6"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
         
-            elif current_state == "6":
+            elif current_state == "4":
                 if self.navigate_by_wall(left=3.004, angle=0.0, align_wall="rear"):
                     current_state = "7"
                 else:
@@ -318,7 +324,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "9":
-                if self.navigate_by_wall(rear=4.09, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(rear=4.02, angle=0.0, align_wall="rear"):
                     current_state = "10"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -330,7 +336,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "11":
-                if self.move_for_duration(linear_x=0.38, angular_z=-0.85, duration=4.0):
+                if self.move_for_duration(linear_x=0.3, angular_z=-0.634, duration=5.7):
                     current_state = "12"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -342,7 +348,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "13":
-                if self.navigate_by_wall(front=4.076, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(rear=1.761, angle=0.0, align_wall="rear"):
                     current_state = "20"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -384,25 +390,25 @@ class MainController:
             #         current_state = "ERROR_RECOVERY"
 
             elif current_state == "20":
-                if self.navigate_by_wall(front=1.70,angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(rear=3.955,angle=0.0, align_wall="rear"):
                     current_state = "21"
                 else:
                     current_state = "ERROR_RECOVERY"
             
             elif current_state == "21":
-                if self.navigate_by_wall(right=4.06, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(right=4.06, angle=0.0, align_wall="rear"):
                     current_state = "22"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "22":
-                if self.move_for_duration(linear_x=0.38, angular_z=0.84, duration=4.0):
+                if self.move_for_duration(linear_x=0.38, angular_z=0.86, duration=4.1):
                     current_state = "23"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "23":
-                if self.navigate_by_wall(rear=1.557, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(angle=0.0, align_wall="rear"):
                     current_state = "24"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -426,16 +432,29 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "27":
-                if self.navigate_by_wall(rear=3.2, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(left=2.17, angle=0.0, align_wall="rear"):
                     current_state = "28"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "28":
-                if self.navigate_by_wall(left=5.033, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(angle=-90):
                     current_state = "29"
                 else:
                     current_state = "ERROR_RECOVERY"
+            
+
+            # elif current_state == "27":
+            #     if self.navigate_by_wall(rear=3.2, angle=0.0, align_wall="rear"):
+            #         current_state = "28"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
+
+            # elif current_state == "28":
+            #     if self.navigate_by_wall(left=5.033, angle=0.0, align_wall="rear"):
+            #         current_state = "29"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
             elif current_state == "29":
                 rospy.loginfo("All tasks completed successfully!")
