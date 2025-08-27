@@ -91,11 +91,12 @@ class ObjectDetector:
                 continue
             boxes_xyxy = result.boxes.xyxy.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
-            names = result.names
-
             for i in range(len(boxes_xyxy)):
                 class_id = int(classes[i])
-                class_name = names.get(class_id, str(class_id))
+                if isinstance(result.names, dict):
+                    class_name = result.names.get(class_id, str(class_id))
+                else:
+                    class_name = result.names[class_id]
                 if class_name != target_class_name:
                     continue
                 box = boxes_xyxy[i]
@@ -181,7 +182,8 @@ class App:
                     rospy.loginfo(f"Coffee X: {world_x:.3f}")
                     offset_left = -0.13
                     offset_right = 0.17
-                    if world_x > offset_left + offset_right / 2:
+                    center_threshold = (offset_left + offset_right) / 2.0
+                    if world_x > center_threshold:
                         step = 2
                         offset = offset_right
                     else:
@@ -192,7 +194,6 @@ class App:
                         self.velocity_publisher.publish(twist_msg)
                         rospy.loginfo(world_x - offset)
                         cv2.destroyAllWindows()
-                        self.camera.stop()
                         return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor=step)
                     elif (world_x - offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
