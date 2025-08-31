@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import cv2
-import time
 import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
@@ -14,13 +13,14 @@ from object_detect.srv import DetectCoffee, DetectCoffeeResponse
 # Class: RealSenseCamera
 # 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
 # =============================================================================
+
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
         self.started = False
         config = rs.config()
-        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
         try:
             self.pipeline.start(config)
             self.started = True
@@ -53,6 +53,7 @@ class RealSenseCamera:
 # Class: ObjectDetector
 # 目的: 封裝 YOLOv8 物件偵測和 3D 座標計算相關邏輯
 # =============================================================================
+
 class ObjectDetector:
     def __init__(self, model_path, conf_thresh=0.8):
         self.model = YOLO(model_path)
@@ -90,11 +91,12 @@ class ObjectDetector:
                 continue
             boxes_xyxy = result.boxes.xyxy.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
-            names = result.names
-
             for i in range(len(boxes_xyxy)):
                 class_id = int(classes[i])
-                class_name = names.get(class_id, str(class_id))
+                if isinstance(result.names, dict):
+                    class_name = result.names.get(class_id, str(class_id))
+                else:
+                    class_name = result.names[class_id]
                 if class_name != target_class_name:
                     continue
                 box = boxes_xyxy[i]
@@ -124,12 +126,14 @@ class ObjectDetector:
 # Class: App
 # 目的：偵測咖啡並回傳 Service
 # =============================================================================
+
 class App:
     def __init__(self, model_path):
         rospy.loginfo("Initializing Coffee Taker Server...")
-        self.detector = ObjectDetector(model_path)  # 保留 YOLO 模型在初始化
+        self.detector = ObjectDetector(model_path)
         self.velocity_publisher = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
         self.previous_twist = Twist()
+        self.camera = None
         self.coffee_service = rospy.Service('CoffeeTaker', DetectCoffee, self.handle_get_coffee_depth)
         rospy.loginfo("Service 'CoffeeTaker' is ready.")
 
@@ -145,15 +149,15 @@ class App:
 
     def handle_get_coffee_depth(self, req):
         try:
-            camera = RealSenseCamera()
-            if not camera.started:
+            self.camera = RealSenseCamera()
+            if not self.camera.started:
                 rospy.logerr("Camera failed to start.")
-                return DetectCoffeeResponse(success=False, depth=0.0, step_motor="0")
+                return DetectCoffeeResponse(success=False, depth=0.0, step_motor=0)
 
             coffee_type = req.coffee_type
             rate = rospy.Rate(10)
             while not rospy.is_shutdown():
-                depth_intrin, img_color, depth_frame = camera.get_aligned_images()
+                depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
                 if depth_intrin is None:
                     rospy.loginfo("No camera data.")
                     rate.sleep()
@@ -165,8 +169,8 @@ class App:
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     rospy.loginfo("Quit signal received from cv2 window.")
                     cv2.destroyAllWindows()
-                    camera.stop()
-                    return DetectCoffeeResponse(success=False, depth=0.0, step_motor="0")
+                    self.camera.stop()
+                    return DetectCoffeeResponse(success=False, depth=0.0, step_motor=0)  
 
                 if detections:
                     closest_coffee = min(detections, key=lambda d: d['xyz'][1])
@@ -178,7 +182,8 @@ class App:
                     rospy.loginfo(f"Coffee X: {world_x:.3f}")
                     offset_left = -0.13
                     offset_right = 0.17
-                    if world_x > offset_left + offset_right / 2:
+                    center_threshold = (offset_left + offset_right) / 2.0
+                    if world_x > center_threshold:
                         step = 2
                         offset = offset_right
                     else:
@@ -189,8 +194,7 @@ class App:
                         self.velocity_publisher.publish(twist_msg)
                         rospy.loginfo(world_x - offset)
                         cv2.destroyAllWindows()
-                        camera.stop()  # ⬅️ 偵測完成後關閉相機
-                        return DetectCoffeeResponse(success=True, depth = float(depth_y), step_motor = int(step))
+                        return DetectCoffeeResponse(success=True, depth=float(depth_y), step_motor=step)
                     elif (world_x - offset) > 0:
                         rospy.loginfo("Coffee is to the right.")
                         twist_msg.linear.y = -0.1
@@ -198,21 +202,26 @@ class App:
                         rospy.loginfo("Coffee is to the left.")
                         twist_msg.linear.y = 0.1
                     self.velocity_publisher.publish(twist_msg)
-                    time.sleep(1)
+                    rospy.sleep(1.0)
                     twist_msg = Twist()
                     self.velocity_publisher.publish(twist_msg)
                 else:
                     rospy.loginfo("No Coffee detected.")
                 rate.sleep()
 
-            return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
+            return DetectCoffeeResponse(success=False, depth=0.0, step_motor=0)
 
         except Exception as e:
             rospy.logerr(f"An error occurred during detection: {e}")
-            return DetectCoffeeResponse(success=False, depth=0.0, step_motor = "0")
+            return DetectCoffeeResponse(success=False, depth=0.0, step_motor=0)
+
+        finally:
+            if self.camera:
+                self.camera.stop()
 
     def shutdown(self):
-        self.camera.stop()
+        if self.camera:
+            self.camera.stop()
         cv2.destroyAllWindows()
         rospy.loginfo("Coffee Taker Server Shutdown.")
 
