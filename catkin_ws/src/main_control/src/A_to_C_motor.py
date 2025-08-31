@@ -29,10 +29,10 @@ def A_to_C_motor():
             velocity_publisher.publish(vel_msg)
             rate.sleep()
 
-    def left_move(duration, speed):
-        vel_msg.linear.y = speed  # Move forward
-        vel_msg.linear.x = 0.0
-        vel_msg.angular.z = 0.0  # No rotation
+    def left_move(duration, speed_x, speed_y, z):
+        vel_msg.linear.y = speed_y  # Move forward
+        vel_msg.linear.x = speed_x
+        vel_msg.angular.z = z  # No rotation
         start_time = rospy.Time.now().to_sec()
         while rospy.Time.now().to_sec() - start_time < duration:
             velocity_publisher.publish(vel_msg)
@@ -63,16 +63,20 @@ def A_to_C_motor():
 
 
     def A_to_C():
-        # left_move(1, 0.15)  # Move forward for 5 seconds at 0.15 m/s
-        # stop_robot()
-        # sleep(1)                 # 1-second delay
-
-
-
-
-        move_forward(5.7, 0.3, -0.634)  # Move forward for 7.4 seconds at 0.25 m/s
+        left_move(30, 0.4, -0.6, 0.4)  # (duration, x, y, z)
         stop_robot()
-        sleep(1) 
+        sleep(1)                 # 1-second delay
+
+        # left_move(5.8,-0.6,0.6)  # Move forward for 5 seconds at 0.15 m/s
+        # stop_robot()
+        # sleep(1)  
+
+
+
+
+        # move_forward(5.7, 0.3, -0.634)  # Move forward for 7.4 seconds at 0.25 m/s
+        # stop_robot()
+        # sleep(1) 
 
         # turn_left(6.2, 0.5)
         # stop_robot()

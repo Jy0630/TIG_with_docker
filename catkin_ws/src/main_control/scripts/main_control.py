@@ -3,20 +3,16 @@
 
 import rospy
 from std_msgs.msg import String
-from line_follower.srv import SetLineFollower
+# from line_follower.srv import SetLineFollower
 from wall_localization.srv import SetWallNavigation
 from geometry_msgs.msg import Twist
 
-from object_detect.srv import DetectOrangeGoal
-from object_detect.srv import DetectCoffee, DetectCoffeeRequest
+# from object_detect.srv import DetectOrangeGoal
 import numpy as np
 import time
 
-from object_detect.srv import DetectObjects
-from object_detect.srv import  DetectCoffee
-
-from std_msgs.msg import String, Float32, Bool
-from step_motor.srv import SetDistance
+# from object_detect.srv import DetectObjects
+# from object_detect.srv import  DetectCoffee
 
 class MainController:
 
@@ -28,26 +24,14 @@ class MainController:
         # rospy.loginfo("Waiting for services...")
         # rospy.wait_for_service('set_line_follower')
         # self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
-        # self.cmd_vel_pub = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
-        # rospy.loginfo("Publisher to '/cmd_vel' created.")
+        self.cmd_vel_pub = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
+        rospy.loginfo("Publisher to '/cmd_vel' created.")
 
-        # rospy.wait_for_service('navigate_by_wall')
+        rospy.wait_for_service('navigate_by_wall')
         self.wall_nav_client = rospy.ServiceProxy('navigate_by_wall', SetWallNavigation)
         
         # rospy.wait_for_service('detect_orange_goal')
         # self.orange_detect_client = rospy.ServiceProxy('detect_orange_goal', DetectOrangeGoal)
-        self.dc_motor_ready = False
-        self.ready_sub = rospy.Subscriber('/dc_ready', Bool, self.ready_callback)
-        rospy.loginfo("Subscribing to /dc_ready topic for handshake.")
-
-        self.height_pub = rospy.Publisher('/slider_setpoint', Float32, queue_size=10, latch=True)
-        rospy.loginfo("Created Publisher to /slider_setpoint for DC motor control.")
-
-        # 訂閱者：用於接收來自 Arduino 的 /slider_current_height 回報
-        self.current_height = None # 用於儲存最新的高度回報值
-        self.motor_num = None
-        self.height_sub = rospy.Subscriber('/slider_current_height', Float32, self.height_callback)
-        rospy.loginfo("Created Subscriber to /slider_current_height for feedback.")
         
         rospy.loginfo("All services are ready.")
 
@@ -55,16 +39,15 @@ class MainController:
         # self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
         # rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
 
-        #object detection
+        # #object detection
         # rospy.wait_for_service('detect_objects_srv')
         # self.detect_client = rospy.ServiceProxy('detect_objects_srv', DetectObjects)
 
-        #coffeesupply
+        # #coffeesupply
         # rospy.wait_for_service('detect_coffee_srv')
         # self.detect_client = rospy.ServiceProxy('detect_coffee_srv',DetectCoffee)
 
         self.run_competition_flow()
-        
 
     # def intersection_callback(self, msg):
     #     self.last_intersection_type = msg.data
@@ -79,7 +62,7 @@ class MainController:
     #         rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
     #         return False
 
-    # def follow_line_until_t_junction(self, timeout_sec=35.0):
+    # def follow_line_until_t_junction(self, timeout_sec=60.0):
     #     """Line following task until a T-junction is detected."""
     #     rospy.loginfo("Executing task: Follow line until T-junction...")
     #     self.last_intersection_type = ""
@@ -88,8 +71,8 @@ class MainController:
     #     start_time = rospy.Time.now()
     #     rate = rospy.Rate(10)
     #     while not rospy.is_shutdown():
-    #         if self.last_intersection_type == "T_JUNCTION" or self.last_intersection_type == "LEFT_FORK" or self.last_intersection_type == "RIGHT_FORK":
-    #             rospy.loginfo("Intersection detected! Stopping.")
+    #         if self.last_intersection_type == "T_JUNCTION":
+    #             rospy.loginfo("T-junction detected! Stopping.")
     #             return self.toggle_line_follower(False)
     #         if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
     #             rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping.")
@@ -143,107 +126,40 @@ class MainController:
             rospy.logerr(f"Service call for odometry navigation failed: {e}")
             return False
         
-    # def move_for_duration(self, linear_x=0.0, linear_y=0.0, angular_z=0.0, duration=1.0):
-    #         """
-    #         以指定速度移動特定時間。
-    #         :param linear_x: x 軸線速度 (m/s)
-    #         :param linear_y: y 軸線速度 (m/s)
-    #         :param angular_z: z 軸角速度 (rad/s)
-    #         :param duration: 移動持續時間 (秒)
-    #         """
-    #         rospy.loginfo(f"Executing move_for_duration: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}, duration={duration}s")
+    def move_for_duration(self, linear_x=0.0, linear_y=0.0, angular_z=0.0, duration=1.0):
+            """
+            以指定速度移動特定時間。
+            :param linear_x: x 軸線速度 (m/s)
+            :param linear_y: y 軸線速度 (m/s)
+            :param angular_z: z 軸角速度 (rad/s)
+            :param duration: 移動持續時間 (秒)
+            """
+            rospy.loginfo(f"Executing move_for_duration: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}, duration={duration}s")
             
-    #         # 建立 Twist 訊息
-    #         vel_msg = Twist()
-    #         vel_msg.linear.x = linear_x
-    #         vel_msg.linear.y = linear_y
-    #         vel_msg.angular.z = angular_z
+            # 建立 Twist 訊息
+            vel_msg = Twist()
+            vel_msg.linear.x = linear_x
+            vel_msg.linear.y = linear_y
+            vel_msg.angular.z = angular_z
             
-    #         # 設定發布頻率
-    #         rate = rospy.Rate(10) # 10 Hz
+            # 設定發布頻率
+            rate = rospy.Rate(10) # 10 Hz
             
-    #         # 記錄開始時間
-    #         start_time = rospy.Time.now()
+            # 記錄開始時間
+            start_time = rospy.Time.now()
             
-    #         # 在指定時間內持續發布速度指令
-    #         while (rospy.Time.now() - start_time).to_sec() < duration:
-    #             if rospy.is_shutdown():
-    #                 break
-    #             self.cmd_vel_pub.publish(vel_msg)
-    #             rate.sleep()
+            # 在指定時間內持續發布速度指令
+            while (rospy.Time.now() - start_time).to_sec() < duration:
+                if rospy.is_shutdown():
+                    break
+                self.cmd_vel_pub.publish(vel_msg)
+                rate.sleep()
                 
-    #         # 時間到後，發布停止指令
-    #         stop_msg = Twist()
-    #         self.cmd_vel_pub.publish(stop_msg)
-    #         rospy.loginfo("Movement duration ended. Stopping robot.")
-    #         return True # 表示執行成功
-
-
-    # def detect_and_navigate_to_orange(self, search_timeout_sec=120.0):
-    #     """
-    #     Detects an orange goal, translates its absolute world coordinates
-    #     into relative wall distances, and navigates to goal.
-    #     """
-
-    #     origin_dist_to_right_wall = rospy.get_param("~origin_to_right_wall_dist", 0.5)  # x1 (meters)
-    #     origin_dist_to_front_wall = rospy.get_param("~origin_to_front_wall_dist", 3.0)  # y1 (meters)
-
-    #     rospy.loginfo("[GOAL轉換參數] Origin→右牆距離: %.2fm, Origin→前牆距離: %.2fm" %
-    #               (origin_dist_to_right_wall, origin_dist_to_front_wall))
-
-    #     start_time = rospy.Time.now()
-    #     detect_response = None
-
-    #     while not rospy.is_shutdown():
-    #         if (rospy.Time.now() - start_time).to_sec() > search_timeout_sec:
-    #             rospy.logerr(f"Search timed out after {search_timeout_sec}s. Could not find orange goal.")
-    #             return False
-
-    #         rospy.loginfo_throttle(5, "Continuously searching for orange pair...")
-    #         try:
-    #             response = self.orange_detect_client()
-    #             if response.success:
-    #                 rospy.loginfo("Orange goal found! Proceeding to translation and navigation.")
-    #                 detect_response = response
-    #                 break
-    #             else:
-    #                 rospy.sleep(1.0)
-    #         except rospy.ServiceException as e:
-    #             rospy.logerr(f"Service call to 'detect_orange_goal' failed: {e}. Retrying in 2 seconds...")
-    #             rospy.sleep(2.0)
-
-    #     if detect_response is None:
-    #         return False
-
-    #     world_x = detect_response.target_x
-    #     world_y = detect_response.target_y
-
-    #     nav_target_right = abs(world_x) + origin_dist_to_right_wall
-    #     nav_target_front = origin_dist_to_front_wall - world_y
-
-    #     rospy.loginfo("Coordinate Translation:")
-    #     rospy.loginfo(f"  - Detected World Goal (X, Y): ({world_x:.3f}, {world_y:.3f})")
-    #     rospy.loginfo(f"  - ==> Nav Goal (target_right, target_front, target_angle): ({nav_target_right:.3f}, {nav_target_front:.3f}, {np.degrees(detect_response.target_final_yaw):.3f})")
-
-    #     if not self.navigate_by_wall(front=nav_target_front, right=nav_target_right ,target_angle=0.0, align_wall="right"):
-    #         rospy.logerr("Failed to navigate to the target point.")
-    #         return False
-
-    #     target_angle_deg = np.degrees(detect_response.target_final_yaw)
-    #     if not self.navigate_by_wall(angle=target_angle_deg):
-    #         rospy.logerr("Failed to rotate to the final angle.")
-    #         return False
-            
-        #     if response.success:
-        #         rospy.loginfo(f"Odometry navigation successful: {response.message}")
-        #         return True
-        #     else:
-        #         rospy.logerr(f"Odometry navigation failed: {response.message}")
-        #         return False
-
-        # except rospy.ServiceException as e:
-        #     rospy.logerr(f"Service call for odometry navigation failed: {e}")
-        #     return False
+            # 時間到後，發布停止指令
+            stop_msg = Twist()
+            self.cmd_vel_pub.publish(stop_msg)
+            rospy.loginfo("Movement duration ended. Stopping robot.")
+            return True # 表示執行成功
 
 
     # def detect_and_navigate_to_orange(self, search_timeout_sec=120.0):
@@ -304,7 +220,7 @@ class MainController:
     #     rospy.loginfo("Successfully navigated to the orange goal!")
     #     return True
 
-    #咖啡偵測coffee detect用來判斷菜單內容
+    # #咖啡偵測coffee detect用來判斷菜單內容
     # def detect_objects(self):
     #     try:
     #         resp = self.detect_client()
@@ -314,7 +230,7 @@ class MainController:
     #             rospy.logerr(f"Object detection service call failed: {e}")
     #             return []
         
-    #coffeesupply 根據物件偵測結果（位置與名稱）判斷咖啡要放在哪一張桌子上，然後發佈 ROS topic 指令給其他控制單元執行
+    # #coffeesupply 根據物件偵測結果（位置與名稱）判斷咖啡要放在哪一張桌子上，然後發佈 ROS topic 指令給其他控制單元執行
     # def detect_coffee(self):
     #     try:
     #         resp = self.coffee_client()  # 呼叫 detect_coffee_srv (無參數)
@@ -330,354 +246,230 @@ class MainController:
     #         rospy.logerr(f"Coffee detection service call failed: {e}")
     #         return None
 
-
-    def call_coffee_service(self, coffee_type):
-        rospy.wait_for_service('CoffeeTaker')
-        try:
-            detect_coffee = rospy.ServiceProxy('CoffeeTaker', DetectCoffee)
-            req = DetectCoffeeRequest(coffee_type=coffee_type)
-            resp = detect_coffee(req)
-            if resp.success:
-                rospy.loginfo(f"Depth: {resp.depth:.2f} m, Step Motor: {resp.step_motor}")
-                self.motor_num = resp.step_motor
-                return True
-            else:
-                rospy.logwarn("No coffee detected.")
-                return False
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Service call failed: {e}")
-
-            
-    #步進距離
-    def call_set_distance(self, motor_id, distance):
-        service_name = 'cmd_distance_srv'
-        rospy.wait_for_service(service_name)
-        try:
-            service_proxy = rospy.ServiceProxy(service_name, SetDistance)
-            resp = service_proxy(motor_id, distance)
-            return resp.result == f"motor{motor_id}_end"
-        except rospy.ServiceException as e:
-            rospy.logerr(f"呼叫 {service_name} 失敗: {e}")
-        return False
-    
-    def height_callback(self, msg):
-        """
-        當收到 /slider_current_height 的新訊息時，此函式會被自動呼叫。
-        它的功能是更新儲存的當前高度值。
-        """
-        self.current_height = msg.data
-
-    def ready_callback(self, msg):
-        """當收到 /dc_ready 的訊息時，更新就緒狀態旗標。"""
-        if msg.data:
-            self.dc_motor_ready = True
-            rospy.loginfo("Received 'dc_ready' signal from Arduino. DC motor is ready.")
-            # 我們可以取消訂閱，因為這是一個一次性的信號
-            self.ready_sub.unregister()
-
-    # ==============================================================
-    # ==             致動器控制與等待函式 (Actuator Control)          ==
-    # ==============================================================
-
-    # --- NEW: 等待 Arduino 就緒的專用函式 ---
-    def wait_for_dc_motor_ready(self, timeout_sec=10.0):
-        """等待直到收到來自 Arduino 的 /dc_ready 信號。"""
-        rospy.loginfo("Waiting for DC motor node to publish ready signal...")
-        start_time = rospy.Time.now()
-        rate = rospy.Rate(10)
-
-        while not self.dc_motor_ready and not rospy.is_shutdown():
-            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout! Did not receive /dc_ready signal in {timeout_sec} seconds.")
-                return False
-            rate.sleep()
-        
-        return self.dc_motor_ready
-
-
-    #dc
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=15.0):
-        """發布目標高度，並等待 Arduino 回報已到達目標位置。"""
-        rospy.loginfo(f"Commanding slider to move to {target_height_cm:.2f} cm...")
-        
-        # 這個檢查仍然有價值，作為雙重保險，確保回報通道也正常
-        if self.current_height is None:
-            rospy.logwarn("Height feedback is not available yet. Waiting for first feedback message...")
-            rospy.sleep(1.0) 
-            if self.current_height is None:
-                rospy.logerr("Still no height feedback. Aborting move.")
-                return False
-        
-        # 發布目標高度指令
-        height_msg = Float32()
-        height_msg.data = float(target_height_cm)
-        self.height_pub.publish(height_msg)
-
-        # 進入等待迴圈，直到到達目標或逾時
-        start_time = rospy.Time.now()
-        rate = rospy.Rate(10)
-
-        while not rospy.is_shutdown():
-            if abs(self.current_height - target_height_cm) < tolerance_cm:
-                rospy.loginfo(f"Slider reached target. Current height: {self.current_height:.2f} cm.")
-                rospy.sleep(0.5)
-                return True
-
-            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout! Failed to reach {target_height_cm:.2f} cm. Last known height: {self.current_height:.2f} cm.")
-                return False
-
-            rate.sleep()
-        
-        return False
-    
-
-
-        
     def run_competition_flow(self):
-        current_state = "hide"
+        current_state = "NAV_AFTER_BRIDGE"
+        
+
         while not rospy.is_shutdown():
-
-            rospy.sleep(3)
             rospy.loginfo(f"====== Current State: {current_state} ======")
-
-            if current_state == "hide":
-                if self.call_set_distance(1, 30) and self.call_set_distance(2, 30):
-                    current_state = "first_up"
+##########################################################################################
+            # if current_state == "CROSS_BRIDGE":
+            #     if self.follow_line_until_t_junction():
+            #         current_state = "NAV_AFTER_BRIDGE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
+##########################################################################################
+            # if current_state == "NAV_AFTER_BRIDGE":
+            #     # time.sleep(3)
+            #     if self.navigate_by_wall(rear=2.039, angle=0.0, align_wall="right"):
+            #         current_state = "1"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
+            if current_state == "NAV_AFTER_BRIDGE":
+                if self.slid
+                    current_state = "12"
                 else:
                     current_state = "ERROR_RECOVERY"
-            elif current_state == "first_up":
-                if self.move_slider_to_height(100):
-                    current_state = "first_down"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "first_down":
-                if self.move_slider_to_height(0):
-                    current_state = "draw"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "draw":
-                if self.call_set_distance(1, 0) and self.call_set_distance(2, 0):
-                    current_state = "0"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-#             if current_state == "hide":
-#                 if self.call_set_distance(1, 10) and self.call_set_distance(2, 10):
-#                     current_state = "first_up"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "first_up":
-#                 if self.move_slider_to_height(20.2):
-#                     current_state = "first_front"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "first_front":
-#                 if self.navigate_by_wall(front=1.4, angle=0.0, align_wall="right"):
-#                     current_state = "1"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
 
 #             elif current_state == "1":
-#                 if self.navigate_by_wall(right=0.6, angle=0.0, align_wall="right"):
-#                     current_state = "1.3"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "1.3":
-#                 if self.navigate_by_wall(angle=0.0, align_wall="front"):
-#                     current_state = "1.4"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "1.4":
-#                 if self.call_coffee_service("black"):
-#                     time.sleep(1)
-#                     current_state = "1.5"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             # elif current_state == "1.45":
-#             #     if self.navigate_by_wall(angle=0.0, align_wall="right"):
-#             #         current_state = "1.5"
-#             #     else:
-#             #         current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "1.5":
-#                 if self.move_slider_to_height(50):
+#                 # time.sleep(3)
+#                 if self.navigate_by_wall(right=2.3, angle=0.0, align_wall="right"):
 #                     current_state = "2"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
+# # ##########################################################################################
 
 #             elif current_state == "2":
-#                 if self.navigate_by_wall(front=1.22, angle=0.0, align_wall="right"):
+#                 if self.navigate_by_wall(rear=2.382, angle=0.0, align_wall="rear"):
+#                     # time.sleep(0.5)
 #                     current_state = "3"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
-            
+
 #             elif current_state == "3":
-#                 if self.call_set_distance(self.motor_num, 35):
-#                     current_state = "first_down"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"        
-
-#             elif current_state == "first_down":
-#                 if self.move_slider_to_height(31.65):
-#                     current_state = "first_withdraw"
+#                 if self.move_for_duration(linear_x=0.4, angular_z=0.81, duration=2.0):
+#                     current_state = "3.1"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
-# #################################################################
-#             elif current_state == "first_withdraw":
-#                 if self.call_set_distance(self.motor_num, -36.5):
+# ##########################################################################################
+#             elif current_state =="3.1":
+#                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
 #                     current_state = "4"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-# #################################################################
-#             elif current_state == "4":
-#                 if self.navigate_by_wall(front=1.35, angle=0.0, align_wall="right"):
-#                     current_state = "4.3"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             # elif current_state == "4.3":
-#             #     if self.move_slider_to_height(15):
-#             #         current_state = "4.5"
-#             #     else:
-#             #         current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "4.3":
-#                 if self.move_slider_to_height(3.256):
-#                     current_state = "4.6"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "4.6":
-#                 if self.call_set_distance(self.motor_num, -1.5):
-#                     current_state = "4.7"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "4.7":
-#                 if self.navigate_by_wall(right=0.6, angle=0.0, align_wall="right"):
-#                     current_state = "5"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "5":
-#                 if self.navigate_by_odometry(angle=170):
-#                     current_state = "5.5"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "5.5":
-#                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
-#                     current_state = "6"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "6":
-#                 if self.navigate_by_wall(left=2.24, angle=0.0, align_wall="left"):
-#                     current_state = "6.5"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-
-#             # elif current_state == "6.5":
-#             #     if self.navigate_by_wall(angle=90.0):
-#             #         current_state = "6.7"
-#             #     else:
-#             #         current_state = "ERROR_RECOVERY"
-
-#             elif current_state == "6.5":
-#                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
-#                     current_state = "7"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
 
 #             # elif current_state == "4":
-#             #     if self.call_set_height(4):
-#             #         current_state = "put_coffee_down1"
-#             #     else:
-#             #         current_state = "ERROR_RECOVERY"
+#                 # if self.navigate_by_wall(left=2.97, angle=0.0, align_wall="front"):
+#                 #     current_state = "5"
+#                 # else:
+#                 #     current_state = "ERROR_RECOVERY"
 
-#             # elif current_state == "7":
-#             #     if self.navigate_by_wall(left=2.319, angle=0.0, align_wall="left"):
-#             #         current_state = "7.5"
+#             # elif current_state == "5":
+#             #     if self.navigate_by_wall(rear=2.94,angle=0.0, align_wall="rear"):
+#             #         current_state = "6"
 #             #     else:
 #             #         current_state = "ERROR_RECOVERY"
+        
+#             elif current_state == "4":
+#                 if self.navigate_by_wall(left=3.004, angle=0.0, align_wall="rear"):
+#                     current_state = "7"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
 
 #             elif current_state == "7":
-#                 if self.navigate_by_wall(rear=1.481, angle=0.0, align_wall="left"):
-#                     current_state = "put_coffee_down1"
+#                 if self.navigate_by_wall(rear=3.5, angle=0.0, align_wall="rear"):
+#                     current_state = "8"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
 
-#             elif current_state == "put_coffee_down1":
-#                 if self.move_slider_to_height(1):
-#                     current_state = "first_put_coffee"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-# # ##################################################################
-#             elif current_state == "first_put_coffee":
-#                 if self.call_set_distance(self.motor_num, 12):
-#                     current_state = "put_coffee_down2"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-# # # ####################################################################
-#             elif current_state == "put_coffee_down2":
-#                 if self.move_slider_to_height(30):
-#                     current_state = "second_put_coffee"
-#                 else:
-#                     current_state = "ERROR_RECOVERY"
-# # # ###################################################################
-#             elif current_state == "second_put_coffee":
-#                 if self.call_set_distance(self.motor_num, -12):
-#                     current_state = "8.8"
+#             elif current_state == "8":
+#                 if self.navigate_by_wall(left=3.005, angle=0.0, align_wall="rear"):
+#                     current_state = "9"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
 
-#             elif current_state == "8.8":
-#                 if self.navigate_by_wall(rear=1.35, angle=0.0, align_wall="rear"):
-#                     current_state = "put_coffee_down3"
+#             elif current_state == "9":
+#                 if self.navigate_by_wall(rear=4.02, angle=0.0, align_wall="rear"):
+#                     current_state = "10"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
 
-#             elif current_state == "put_coffee_down3":
-#                 if self.move_slider_to_height(0):
-#                     current_state = "put_coffee_down4"
+#             elif current_state == "10":
+#                 if self.navigate_by_wall(left=3.005, angle=0.0, align_wall="rear"):
+#                     current_state = "11"
 #                 else:
 #                     current_state = "ERROR_RECOVERY"
-# ###########################################################
-# #             elif current_state == "put_coffe_down3":
-# #                 if self.call_set_height():
-# #                     current_state = "third_put_coffee"
-# #                 else:
-# #                     current_state = "ERROR_RECOVERY"
-# # ##############################################################
-# #             elif current_state == "third_put_coffee":
-# #                 if self.call_set_distance(1,):
-# #                     current_state = "put_coffe_down4"
-# #                 else:
-# #                     current_state = "ERROR_RECOVERY"
-# # ################################################################
-# #             elif current_state == "put_coffe_down4":
-# #                 if self.call_set_height():
-# #                     current_state = "1"
-# #                 else:
-# #                     current_state = "ERROR_RECOVERY"
-# #########################################################
-            elif current_state == "0":
+
+#             elif current_state == "11":
+#                 if self.move_for_duration(linear_x=0.2875, angular_z=-0.633, duration=5.7):
+#                     current_state = "12"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "12":
+#                 if self.navigate_by_wall(right=3.98,angle=0.0, align_wall="front"):
+#                     current_state = "13"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "13":
+#                 if self.navigate_by_wall(rear=1.761, angle=0.0, align_wall="rear"):
+#                     current_state = "20"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "14":
+#             #     if self.navigate_by_wall(front=3.8, angle=0.0, align_wall="front"):
+#             #         current_state = "15"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "15":
+#             #     if self.navigate_by_wall(right=3.98, angle=0.0, align_wall="front"):
+#             #         current_state = "16"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "16":
+#             #     if self.navigate_by_wall(front=3, angle=0.0, align_wall="front"):
+#             #         current_state = "17"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "17":
+#             #     if self.navigate_by_wall(right=3.99, angle=0.0, align_wall="front"):
+#             #         current_state = "18"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "18":
+#             #     if self.navigate_by_wall(front=2.3, angle=0.0, align_wall="front"):
+#             #         current_state = "19"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "19":
+#             #     if self.navigate_by_wall(right=4.03, angle=0.0, align_wall="front"):
+#             #         current_state = "20"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "20":
+#                 if self.navigate_by_wall(rear=3.955,angle=0.0, align_wall="rear"):
+#                     current_state = "21"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+            
+#             elif current_state == "21":
+#                 if self.navigate_by_wall(right=4.06, angle=0.0, align_wall="rear"):
+#                     current_state = "22"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "22":
+#                 if self.move_for_duration(linear_x=0.38, angular_z=0.86, duration=4.1):
+#                     current_state = "23"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "23":
+#                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
+#                     current_state = "24"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "24":
+#                 if self.navigate_by_wall(left=5.045, angle=0.0,align_wall="rear"):
+#                     current_state = "25"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "25":
+#                 if self.navigate_by_wall(rear=2.292, angle=0.0, align_wall="rear"):
+#                     current_state = "26"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "26":
+#                 if self.navigate_by_wall(left=5.041, angle=0.0, align_wall="rear"):
+#                     current_state = "27"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "27":
+#                 if self.navigate_by_wall(left=2.17, angle=0.0, align_wall="rear"):
+#                     current_state = "28"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+
+#             elif current_state == "28":
+#                 if self.navigate_by_wall(angle=-90):
+#                     current_state = "29"
+#                 else:
+#                     current_state = "ERROR_RECOVERY"
+            
+
+#             # elif current_state == "27":
+#             #     if self.navigate_by_wall(rear=3.2, angle=0.0, align_wall="rear"):
+#             #         current_state = "28"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+#             # elif current_state == "28":
+#             #     if self.navigate_by_wall(left=5.033, angle=0.0, align_wall="rear"):
+#             #         current_state = "29"
+#             #     else:
+#             #         current_state = "ERROR_RECOVERY"
+
+            elif current_state == "12":
                 rospy.loginfo("All tasks completed successfully!")
                 break
-    
+
             elif current_state == "ERROR_RECOVERY":
                 rospy.logerr("A task failed. Entering error recovery mode.")
                 break
             
-            rospy.sleep(0.1)
+            rospy.sleep(0.5)
 
 if __name__ == '__main__':
     try:
