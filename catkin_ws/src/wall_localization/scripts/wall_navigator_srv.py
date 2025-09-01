@@ -38,7 +38,7 @@ class WallNavigator:
 
         # --- Controller Parameters ---
         # Wall-based navigation parameters
-        self.dist_thresholds = [0.5, 0.2, 0.015]; self.dist_speeds = [0.5, 0.25, 0.13]
+        self.dist_thresholds = [0.5, 0.2, 0.015]; self.dist_speeds = [0.35, 0.15, 0.1]
         
         # Odom-based navigation
         self.odom_dist_thresholds = [0.3, 0.1, 0.01]; self.odom_dist_speeds = [0.25, 0.1, 0.08]
