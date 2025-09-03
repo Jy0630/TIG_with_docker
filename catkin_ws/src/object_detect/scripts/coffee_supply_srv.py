@@ -5,6 +5,7 @@ from ultralytics import YOLO
 import rospy
 import math
 import rospkg, os
+import cv2
 from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
 
 
@@ -205,13 +206,13 @@ class App:
                 return (a is not None) and (b is not None) and (abs(a - b) < tol)
 
             if near(dist_tree, 0.16) and near(dist_home, 0.07):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], "1")
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], 1)
             elif near(dist_tree, 0.075) and near(dist_home, 0.155):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], "2")
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], 2) if                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
             elif near(dist_tree, 0.205) and near(dist_home, 0.15):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], "3")
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], 3)
             elif near(dist_tree, 0.155) and near(dist_home, 0.2):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], "4")
+                return DetectCoffeeSupplyResponse(True, rels['target_name'], 4)
             else:
                 rospy.loginfo("Supply card not matched with any table condition.")
                 return DetectCoffeeSupplyResponse(success=False, target_name=rels['target_name'], table="")
@@ -223,12 +224,18 @@ class App:
             if camera:
                 camera.stop()
 
+    def shutdown(self):
+        if self.camera:
+            self.camera.stop()
+        cv2.destroyAllWindows()
+        rospy.loginfo("Coffee Taker Server Shutdown.")
+
 if __name__ == '__main__':
     try:
         rospy.init_node('coffee_supply_server_node')
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
-        model_path = os.path.join(package_path, 'scripts', 'coffee_supply.p')
+        model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
         server = App(model_path)
         rospy.on_shutdown(server.shutdown)
         rospy.spin()

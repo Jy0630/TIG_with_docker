@@ -313,7 +313,7 @@ class MainController:
         
     def run_competition_flow(self):
         current_state = "hide"
-        self.table = 4
+        # self.table = 4
         # self.coffee_color = "black"
         self.motor_num = 1
         choose_table = 0
@@ -356,12 +356,12 @@ class MainController:
 
 #################################################################
 
-            # elif current_state == "1.4":
-            #     if self.detect_coffee_supply():
-            #         time.sleep(1)
-            #         current_state = "1.45"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
+            elif current_state == "1.4":
+                if self.detect_coffee_supply():
+                    time.sleep(1)
+                    current_state = "1.5"
+                else:
+                    current_state = "ERROR_RECOVERY"
 
             # elif current_state == "1.45":
             #     if self.detect_coffee(self.coffee_color):
@@ -370,7 +370,7 @@ class MainController:
             #     else:
             #         current_state = "ERROR_RECOVERY"
 
-            elif current_state == "1.4":
+            elif current_state == "1.5":
                 if self.move_slider_to_height(50):
                     current_state = "1.8"
                 else:

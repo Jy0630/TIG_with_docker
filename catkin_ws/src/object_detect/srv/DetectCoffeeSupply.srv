@@ -1,4 +1,4 @@
 ---
 bool success
 string target_name
-string table
+int32 table
