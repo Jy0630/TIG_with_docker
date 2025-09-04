@@ -108,6 +108,7 @@ class ObjectDetector:
 
                 surface_dis = self.get_median_depth(aligned_depth_frame, ux, uy)
                 if surface_dis is None:
+                    # 如果沒有深度就跳過（保留你目前對 coffee 準度的邏輯）
                     continue
 
                 center_camera_xyz = rs.rs2_deproject_pixel_to_point(
@@ -138,7 +139,7 @@ class ObjectDetector:
 class App:
     def __init__(self, model_path):
         rospy.loginfo("Initializing Coffee Supply Server ......")
-        self.detector = ObjectDetector(model_path)  
+        self.detector = ObjectDetector(model_path)
         self.coffee_supply_service = rospy.Service(
             'CoffeeSupply', DetectCoffeeSupply, self.coffee_command
         )
@@ -174,19 +175,33 @@ class App:
             rospy.logwarn("Camera not initialized or failed to start.")
             return DetectCoffeeSupplyResponse(success=False, target_name="", table=0)
 
-        self.positions = {}  # 清空上一輪結果
+        # 每次呼叫清空上一輪結果
+        self.positions = {}
         frames_to_capture = 20
         detections_all = []
 
         try:
-            # 多幀抓取
+            # 多幀抓取（同時保留最後一個有效的 depth_intrin/frames 以備 debug 或 fallback）
+            last_depth_intrin = None
+            last_img_color = None
+            last_depth_frame = None
+
             for _ in range(frames_to_capture):
                 depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
                 if depth_intrin is None or img_color is None or depth_frame is None:
                     rospy.logwarn("Camera frame is invalid.")
+                    rospy.sleep(0.02)
                     continue
 
+                last_depth_intrin = depth_intrin
+                last_img_color = img_color
+                last_depth_frame = depth_frame
+
                 detections = self.detector.detect(img_color, depth_frame, depth_intrin)
+                # debug: 印出每幀偵測到的 class
+                if detections:
+                    names_in_frame = [d['class_name'] for d in detections]
+                    rospy.logdebug(f"Frame detections: {names_in_frame}")
                 detections_all.extend(detections)
                 rospy.sleep(0.05)
 
@@ -213,6 +228,11 @@ class App:
                 if not placed:
                     object_groups[name].append([xyz])
 
+            # debug: 列出有哪些類別被偵測到與每個類別群組數量
+            for k, groups in object_groups.items():
+                sizes = [len(g) for g in groups]
+                rospy.loginfo(f"[Groups] class={k}, groups={len(groups)}, sizes={sizes}")
+
             # 選出最多幀的咖啡群組
             target_name = None
             target_xyz = None
@@ -225,12 +245,27 @@ class App:
                     break
 
             if not target_name:
+                rospy.loginfo("No coffee (black/white) group found.")
                 return DetectCoffeeSupplyResponse(success=False, target_name="", table=0)
 
-            # 更新位置
+            # 更新 coffee 位置
             self.positions[target_name] = tuple(target_xyz)
+
+            # ---------- 新增：同時把 tree 與 home 的位置也更新到 self.positions（若存在） ----------
+            for landmark in ['tree', 'home']:
+                if landmark in object_groups:
+                    groups = object_groups[landmark]
+                    groups.sort(key=lambda g: len(g), reverse=True)
+                    lm_xyz = np.median(np.array(groups[0]), axis=0)
+                    self.positions[landmark] = tuple(lm_xyz)
+                    rospy.loginfo(f"Updated landmark {landmark}: {self.positions[landmark]}")
+                else:
+                    rospy.logdebug(f"Landmark {landmark} not found in grouped detections.")
+            # ------------------------------------------------------------------------------
+
             rels = self.get_all_relative()
             if not rels:
+                rospy.loginfo("Cannot find target or reference points.")
                 return DetectCoffeeSupplyResponse(success=False, target_name=target_name, table=0)
 
             # 計算距離
@@ -269,6 +304,7 @@ class App:
             return DetectCoffeeSupplyResponse(success=False, target_name="", table=0)
 
         finally:
+            # 保持原本 behaviour：不論如何都停止 camera，或視需要改成不停止（若想一次只啟動一次）
             if self.camera:
                 self.camera.stop()
 
