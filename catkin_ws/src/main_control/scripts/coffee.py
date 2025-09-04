@@ -269,7 +269,14 @@ class MainController:
 
 
     #dc
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=15.0):
+    def move_slider_to_height(self, target_height_cm, tolerance_cm=0.7, timeout_sec=30.0):
+        start_wait = rospy.Time.now()
+        while self.current_height is None:
+            if (rospy.Time.now() - start_wait).to_sec() > timeout_sec / 2:
+                rospy.logerr("Timeout waiting for first height feedback")
+                return False
+        rospy.sleep(0.1)
+        
         """發布目標高度，並等待 Arduino 回報已到達目標位置。"""
         rospy.loginfo(f"Commanding slider to move to {target_height_cm:.2f} cm...")
         
