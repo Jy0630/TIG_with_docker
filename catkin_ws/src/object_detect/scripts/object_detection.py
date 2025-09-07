@@ -20,16 +20,20 @@ class RealSenseCamera:
         self.align = rs.align(rs.stream.color)
         print("RealSense Camera Initialized.")
 
-    def get_aligned_images(self):
-        frames = self.pipeline.wait_for_frames()
-        aligned_frames = self.align.process(frames)
-        depth_frame = aligned_frames.get_depth_frame()
-        color_frame = aligned_frames.get_color_frame()
-        if not depth_frame or not color_frame:
-            return None, None, None
-        depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
-        img_color = np.asanyarray(color_frame.get_data())
-        return depth_intrin, img_color, depth_frame
+    def get_aligned_images(self, retries=5):
+        for i in range(retries):
+            try:
+                frames = self.pipeline.wait_for_frames(timeout_ms=5000)
+                aligned_frames = self.align.process(frames)
+                depth_frame = aligned_frames.get_depth_frame()
+                color_frame = aligned_frames.get_color_frame()
+                if depth_frame and color_frame:
+                    depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+                    img_color = np.asanyarray(color_frame.get_data())
+                    return depth_intrin, img_color, depth_frame
+            except RuntimeError:
+                rospy.loginfo(f"⚠️ Frame didn't arrive (retry {i+1}/{retries})")
+        return None, None, None
 
     def stop(self):
         self.pipeline.stop()
@@ -160,7 +164,7 @@ if __name__ == '__main__':
         rospy.init_node('object_detection_node', anonymous=True)
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
-        model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
+        model_path = os.path.join(package_path, 'scripts', 'coffee.pt')
         app = App(model_path)
         rospy.on_shutdown(app.shutdown)
         app.run()

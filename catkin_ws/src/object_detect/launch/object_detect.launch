@@ -16,8 +16,5 @@
 
     <!-- 測試 -->
     <!-- <node name="object_detection_node" pkg="object_detect" type="object_detection.py" output="screen" /> -->
-
-    <!-- <node pkg="object_detect" type="coffee_taker_srv.py" name="coffee_taker_server" output="screen"/>
-    <node pkg="object_detect" type="coffee_supply_srv.py" name="coffee_supply_server" output="screen"/> -->
     
 </launch>

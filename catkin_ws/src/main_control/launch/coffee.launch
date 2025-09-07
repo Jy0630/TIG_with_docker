@@ -37,10 +37,7 @@
   <node pkg="wall_localization" type="wall_navigator_srv.py" name="wall_navigator_server" output="screen"/>
 
 <!-- object_detect -->
-
-  <!-- <node pkg="object_detect" type="coffee_taker_srv.py" name="coffee_taker_server" output="screen"/>
-  <node pkg="object_detect" type="coffee_supply_srv.py" name="coffee_supply_server" output="screen"/> -->
-  <include file="$(find object_detect)/launch/object_detect.launch" />
+  <node pkg="object_detect" type="coffee_supply_srv.py" name="coffee_supply_server" output="screen"/>
 
 <!-- upper_control_motor launch -->
   <!-- Mega板通訊 -->

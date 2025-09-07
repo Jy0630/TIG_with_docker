@@ -5,15 +5,11 @@ from ultralytics import YOLO
 import rospy
 import math
 import rospkg, os
-import cv2
 from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
-
 
 # =============================================================================
 # Class: RealSenseCamera
-# 目的: 封裝所有與 Intel RealSense 攝影機相關的操作。
 # =============================================================================
-
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
@@ -29,7 +25,6 @@ class RealSenseCamera:
             rospy.loginfo("RealSense Camera Initialized.")
         except Exception as e:
             rospy.logerr(f"[Camera] Failed to start RealSense pipeline: {e}")
-            self.started = False
 
     def get_aligned_images(self):
         if not self.started:
@@ -45,34 +40,32 @@ class RealSenseCamera:
         return depth_intrin, img_color, depth_frame
 
     def stop(self):
-        try:
-            if self.started:
+        if self.started:
+            try:
                 self.pipeline.stop()
-                self.started = False
                 rospy.loginfo("RealSense Camera Stopped.")
-        except Exception as e:
-            rospy.logwarn(f"[Camera] Stop pipeline warning: {e}")
-
+            except Exception as e:
+                rospy.logwarn(f"[Camera] Stop pipeline warning: {e}")
+            self.started = False
 
 # =============================================================================
 # Class: ObjectDetector
-# 目的: 封裝 YOLOv8 物件偵測和 3D 座標計算相關邏輯
 # =============================================================================
-
 class ObjectDetector:
-    def __init__(self, model_path, conf_thresh=0.65):
+    def __init__(self, model_path, conf_thresh=0.4, sample_size=5):
         self.model = YOLO(model_path)
         self.conf_thresh = conf_thresh
+        self.sample_size = sample_size
         rospy.loginfo(f"Object Detector Initialized with model: {model_path}")
 
-    def get_median_depth(self, depth_frame, u, v, sample_size=5):
-        half_size = sample_size // 2
+    def get_median_depth(self, depth_frame, u, v):
+        half_size = self.sample_size // 2
         depth_values = []
-        height, width = depth_frame.get_height(), depth_frame.get_width()
+        h, w = depth_frame.get_height(), depth_frame.get_width()
         for du in range(-half_size, half_size + 1):
             for dv in range(-half_size, half_size + 1):
                 x, y = int(u) + du, int(v) + dv
-                if 0 <= x < width and 0 <= y < height:
+                if 0 <= x < w and 0 <= y < h:
                     d = depth_frame.get_distance(x, y)
                     if d > 0:
                         depth_values.append(d)
@@ -90,65 +83,44 @@ class ObjectDetector:
             results = self.model.predict([img_color], conf=self.conf_thresh, verbose=False)
         except Exception as e:
             rospy.logerr(f"[YOLO] Inference failed: {e}")
-            return [], []  # 回傳空結果
+            return []
 
         detections = []
-
         for result in results:
-            if result.boxes is None or result.boxes.xyxy is None:
+            if not result.boxes or result.boxes.xyxy is None:
                 continue
-
-            boxes_xyxy = result.boxes.xyxy.cpu().numpy()
+            boxes = result.boxes.xyxy.cpu().numpy()
             confs = result.boxes.conf.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
             names = result.names
-
-            for i in range(len(boxes_xyxy)):
-                box = boxes_xyxy[i]
-                x1, y1, x2, y2 = box
-                ux = (x1 + x2) / 2.0
-                uy = (y1 + y2) / 2.0
-
-                surface_dis = self.get_median_depth(aligned_depth_frame, ux, uy)
-                if surface_dis is None:
+            for i, box in enumerate(boxes):
+                ux, uy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+                depth = self.get_median_depth(aligned_depth_frame, ux, uy)
+                if depth is None:
                     continue
-
-                center_camera_xyz = rs.rs2_deproject_pixel_to_point(
-                    depth_intrin, (int(ux), int(uy)), float(surface_dis)
-                )
-                center_camera_xyz = [round(v, 3) for v in center_camera_xyz]
-                world_x = center_camera_xyz[0]
-                world_y = center_camera_xyz[2]
-                world_z = -center_camera_xyz[1]
-                world_xyz = (world_x, world_y, world_z)
-
-                class_id = int(classes[i])
-                class_name = self._safe_class_name(names, class_id)
-                conf = float(confs[i])
-
+                xyz_camera = rs.rs2_deproject_pixel_to_point(depth_intrin, (int(ux), int(uy)), float(depth))
+                world_xyz = (round(xyz_camera[0],3), round(xyz_camera[2],3), round(-xyz_camera[1],3))
                 detections.append({
-                    'class_id': class_id,
-                    'class_name': class_name,
-                    'conf': round(conf, 3),
-                    'xyz': tuple(world_xyz)
+                    'class_id': int(classes[i]),
+                    'class_name': self._safe_class_name(names, int(classes[i])),
+                    'conf': round(float(confs[i]),3),
+                    'xyz': world_xyz
                 })
-
         return detections
-
 
 # =============================================================================
 # Class: App
-# 目的：偵測咖啡並回傳 Service
 # =============================================================================
-
 class App:
-    def __init__(self, model_path):
+    def __init__(self, model_path, cup_color_model_path):
         rospy.loginfo("Initializing Coffee Supply Server ......")
         self.detector = ObjectDetector(model_path)
+        self.cup_color_detector = ObjectDetector(cup_color_model_path)
         self.coffee_supply_service = rospy.Service('CoffeeSupply', DetectCoffeeSupply, self.coffee_command)
-        rospy.loginfo("Service 'CoffeeSupply' is ready.")
         self.positions = {}
+        self.camera = None
 
+    # 相對位置
     def get_relative_position(self, from_name, to_name):
         from_pos = self.positions.get(from_name.lower())
         to_pos = self.positions.get(to_name.lower())
@@ -157,86 +129,135 @@ class App:
         return tuple(round(to_pos[i] - from_pos[i], 3) for i in range(3))
 
     def get_all_relative(self):
-        target = None
-        if 'black' in self.positions:
-            target = 'black'
-        elif 'white' in self.positions:
-            target = 'white'
-        else:
-            return None
-        return {
-            'home_to_target': self.get_relative_position('home', target),
-            'tree_to_target': self.get_relative_position('tree', target),
-            'target_name': target
-        }
+        tree_to_target = self.get_relative_position('tree', 'black') or self.get_relative_position('tree', 'white')
+        home_to_target = self.get_relative_position('home', 'black') or self.get_relative_position('home', 'white')
+        return {'tree_to_target': tree_to_target, 'home_to_target': home_to_target}
 
     def coffee_command(self, req):
-        camera = None
+        self.camera = RealSenseCamera()
+        if not self.camera.started:
+            rospy.logwarn("Camera not initialized or failed to start.")
+            return DetectCoffeeSupplyResponse(success=False, target_name="", table=0, cup_side="")
+
+        self.positions = {}
+        detections_all = []
         try:
-            camera = RealSenseCamera()
-            if not camera.started:
-                rospy.logwarn("Camera failed to start.")
-                return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
+            # --- 多幀咖啡牌偵測 ---
+            for _ in range(20):
+                depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
+                if depth_intrin is None:
+                    rospy.sleep(0.02)
+                    continue
+                detections_all.extend(self.detector.detect(img_color, depth_frame, depth_intrin))
+                rospy.sleep(0.05)
 
-            depth_intrin, img_color, depth_frame = camera.get_aligned_images()
-            if depth_intrin is None or img_color is None or depth_frame is None:
-                rospy.logwarn("Camera frame is invalid.")
-                return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
+            if not detections_all:
+                rospy.loginfo("No detections in captured frames.")
+                return DetectCoffeeSupplyResponse(success=False, target_name="", table=0, cup_side="")
 
-            detections = self.detector.detect(img_color, depth_frame, depth_intrin)
+            # --- 分群 ---
+            object_groups = {}
+            distance_threshold = 0.05
+            for det in detections_all:
+                name = det['class_name'].lower()
+                xyz = np.array(det['xyz'])
+                group_list = object_groups.setdefault(name, [])
+                for group in group_list:
+                    if np.linalg.norm(np.median(group, axis=0) - xyz) < distance_threshold:
+                        group.append(xyz)
+                        break
+                else:
+                    group_list.append([xyz])
 
-            for det in detections:
-                self.positions[det['class_name'].lower()] = det['xyz']
+            # --- 選出 target ---
+            target_name, target_xyz = None, None
+            for candidate in ['black', 'white']:
+                if candidate in object_groups:
+                    groups = object_groups[candidate]
+                    largest_group = max(groups, key=len)
+                    target_name = candidate
+                    target_xyz = np.median(np.array(largest_group), axis=0)
+                    break
 
+            if not target_name:
+                rospy.loginfo("No coffee (black/white) group found.")
+                return DetectCoffeeSupplyResponse(success=False, target_name="", table=0, cup_side="")
+
+            self.positions[target_name] = tuple(target_xyz)
+
+            # --- landmark ---
+            for lm in ['tree', 'home']:
+                if lm in object_groups:
+                    groups = object_groups[lm]
+                    self.positions[lm] = tuple(np.median(np.array(max(groups, key=len)), axis=0))
+
+            # --- 桌號判斷 ---
             rels = self.get_all_relative()
-            if not rels:
-                rospy.loginfo("Cannot find the supply card (missing 'home'/'tree' or target).")
-                return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
+            def dist(vec): return round(math.sqrt(sum(x**2 for x in vec)),3) if vec else None
+            tol = 0.05
+            def near(a,b): return a is not None and b is not None and abs(a-b)<tol
 
-            def calc_distance(vec):
-                if vec is None:
-                    return None
-                return round(math.sqrt(sum(x**2 for x in vec)), 3)
+            dist_tree = dist(rels['tree_to_target'])
+            dist_home = dist(rels['home_to_target'])
+            table_lookup = {
+                (0.16,0.07):1, (0.075,0.155):2, (0.205,0.15):3, (0.155,0.2):4
+            }
+            table = 0
+            for (dt, dh), t in table_lookup.items():
+                if near(dist_tree, dt) and near(dist_home, dh):
+                    table = t
+                    break
+            success = table != 0
 
-            dist_tree = calc_distance(rels['tree_to_target'])
-            dist_home = calc_distance(rels['home_to_target'])
+            # --- 咖啡杯左右判斷 ---
+            cup_positions = {}
+            for _ in range(5):
+                depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
+                if depth_intrin is None:
+                    rospy.sleep(0.02)
+                    continue
+                cup_dets = self.cup_color_detector.detect(img_color, depth_frame, depth_intrin)
+                for det in cup_dets:
+                    name = det['class_name'].lower()
+                    rel_x = det['xyz'][0] - self.positions[target_name][0]
+                    cup_positions[name] = 'left' if rel_x < 0 else 'right'
+                rospy.sleep(0.03)
 
-            tol = 0.03
-            def near(a, b):
-                return (a is not None) and (b is not None) and (abs(a - b) < tol)
+            # white_side = cup_positions.get('white', 'unknown')
+            # black_side = cup_positions.get('black', 'unknown')
+            # rospy.loginfo(f"White coffee is on the {white_side} side and black coffee is on the {black_side} side")
 
-            if near(dist_tree, 0.16) and near(dist_home, 0.07):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], 1)
-            elif near(dist_tree, 0.075) and near(dist_home, 0.155):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], 2) if                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
-            elif near(dist_tree, 0.205) and near(dist_home, 0.15):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], 3)
-            elif near(dist_tree, 0.155) and near(dist_home, 0.2):
-                return DetectCoffeeSupplyResponse(True, rels['target_name'], 4)
-            else:
-                rospy.loginfo("Supply card not matched with any table condition.")
-                return DetectCoffeeSupplyResponse(success=False, target_name=rels['target_name'], table="")
+            cup_side = cup_positions.get(target_name, "")
 
-        except Exception as e:
-            rospy.logerr(f"[App] coffee_command exception: {e}")
-            return DetectCoffeeSupplyResponse(success=False, target_name="", table="")
-        finally:
-            if camera:
-                camera.stop()
-
+            return DetectCoffeeSupplyResponse(
+                success=success,
+                target_name=target_name,
+                table=table,
+                cup_side=cup_side
+            )
+    
+        except Exception as e: 
+            rospy.logerr(f"[App] coffee_command exception: {e}") 
+            return DetectCoffeeSupplyResponse(success=False, target_name="", table=0, cup_side="")
+        finally: 
+            if self.camera: 
+                self.camera.stop() 
     def shutdown(self):
         if self.camera:
             self.camera.stop()
-        cv2.destroyAllWindows()
-        rospy.loginfo("Coffee Taker Server Shutdown.")
+        rospy.loginfo("Coffee Supply Server Shutdown.")
 
+# =============================================================================
+# Main
+# =============================================================================
 if __name__ == '__main__':
     try:
         rospy.init_node('coffee_supply_server_node')
         rospack = rospkg.RosPack()
-        package_path = rospack.get_path('object_detect')
-        model_path = os.path.join(package_path, 'scripts', 'coffee_supply.pt')
-        server = App(model_path)
+        pkg_path = rospack.get_path('object_detect')
+        model_path = os.path.join(pkg_path, 'scripts', 'coffee_supply.pt')
+        cup_model_path = os.path.join(pkg_path, 'scripts', 'coffee.pt')
+        server = App(model_path, cup_model_path)
         rospy.on_shutdown(server.shutdown)
         rospy.spin()
     except rospy.ROSInterruptException:
