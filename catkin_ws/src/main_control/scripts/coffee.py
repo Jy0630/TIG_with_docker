@@ -192,30 +192,14 @@ class MainController:
                 return False
 
             # 取得咖啡顏色與對應 table
-            self.coffee_color = resp.target_name.lower()
-            self.table = int(resp.table)  # 桌子編號
-            rospy.loginfo(f"Detected coffee: '{self.coffee_color}', table: {self.table}")
+            self.coffee = resp.cup_side.lower()
+            self.table = int(resp.table)
+            rospy.loginfo(f"Detected coffee: '{self.cup_side}', table: {self.table}")
             return True
 
         except rospy.ServiceException as e:
             rospy.logerr(f"CoffeeSupply service call failed: {e}")
             return False
-
-    def detect_coffee(self, coffee_type):
-        rospy.wait_for_service('CoffeeTaker')
-        try:
-            detect_coffee = rospy.ServiceProxy('CoffeeTaker', DetectCoffee)
-            req = DetectCoffeeRequest(coffee_type=coffee_type)
-            resp = detect_coffee(req)
-            if resp.success:
-                rospy.loginfo(f"Depth: {resp.depth:.2f} m, Step Motor: {resp.step_motor}")
-                self.motor_num = resp.step_motor
-                return True
-            else:
-                rospy.logwarn("No coffee detected.")
-                return False
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Service call failed: {e}")
 
     # ==============================================================
     # ==             步進馬達控制 (step motor control)              ==
@@ -369,13 +353,6 @@ class MainController:
                     current_state = "1.5"
                 else:
                     current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "1.45":
-            #     if self.detect_coffee(self.coffee_color):
-            #         time.sleep(1)
-            #         current_state = "1.5"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
 
             elif current_state == "1.5":
                 if self.move_slider_to_height(50):
