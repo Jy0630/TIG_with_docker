@@ -27,7 +27,7 @@ class MainController:
         # rospy.wait_for_service('detect_orange_goal')
         # self.orange_detect_client = rospy.ServiceProxy('detect_orange_goal', DetectOrangeGoal)
         self.dc_motor_ready = False
-        self.ready_sub = rospy.Subscriber('/dc_ready', Bool, self.ready_callback)
+        self.ready_sub = rospy.Subscriber('/dc_zero_ready', Bool, self.ready_callback)
         rospy.loginfo("Subscribing to /dc_ready topic for handshake.")
 
         self.height_pub = rospy.Publisher('/slider_setpoint', Float32, queue_size=10)
@@ -40,10 +40,6 @@ class MainController:
         self.height_sub = rospy.Subscriber('/slider_current_height', Float32, self.height_callback)
         rospy.loginfo("Created Subscriber to /slider_current_height for feedback.")
         
-        initial_height = 0.0
-        height_msg = Float32()
-        height_msg.data = initial_height
-        self.height_pub.publish(height_msg)
         rospy.loginfo("All services are ready.")
 
         # self.last_intersection_type = None
@@ -244,9 +240,11 @@ class MainController:
         它的功能是更新儲存的當前高度值。
         """
         self.current_height = msg.data
+        # rospy.loginfo(f"Height callback received: {self.current_height}")
+
 
     def ready_callback(self, msg):
-        """當收到 /dc_ready 的訊息時，更新就緒狀態旗標。"""
+        """當收到 /dc_zero_ready 的訊息時，更新就緒狀態旗標。"""
         if msg.data:
             self.dc_motor_ready = True
             rospy.loginfo("Received 'dc_ready' signal from Arduino. DC motor is ready.")
@@ -258,23 +256,23 @@ class MainController:
     # ==============================================================
 
     # --- NEW: 等待 Arduino 就緒的專用函式 ---
-    def wait_for_dc_motor_ready(self, timeout_sec=3.0):
-        """等待直到收到來自 Arduino 的 /dc_ready 信號。"""
-        rospy.loginfo("Waiting for DC motor node to publish ready signal...")
-        start_time = rospy.Time.now()
-        rate = rospy.Rate(10)
+    # def wait_for_dc_motor_ready(self, timeout_sec=3.0):
+    #     """等待直到收到來自 Arduino 的 /dc_ready 信號。"""
+    #     rospy.loginfo("Waiting for DC motor node to publish ready signal...")
+    #     start_time = rospy.Time.now()
+    #     rate = rospy.Rate(10)
 
-        while not self.dc_motor_ready and not rospy.is_shutdown():
-            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout! Did not receive /dc_ready signal in {timeout_sec} seconds.")
-                return False
-            rate.sleep()
+    #     while not self.dc_motor_ready and not rospy.is_shutdown():
+    #         if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
+    #             rospy.logerr(f"Timeout! Did not receive /dc_ready signal in {timeout_sec} seconds.")
+    #             return False
+    #         rate.sleep()
         
-        return self.dc_motor_ready
+    #     return self.dc_motor_ready
 
 
     #dc
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=20.0):
+    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=50.0):
         start_wait = rospy.Time.now()
         while self.current_height is None:
             if (rospy.Time.now() - start_wait).to_sec() > timeout_sec / 2:
@@ -334,14 +332,13 @@ class MainController:
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
 
-            # if current_state == "hide":
-            #     if self.call_set_distance(1, 10) :
-            #         current_state = "first_up"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
-
             if current_state == "hide":
-                # self.wait_for_dc_motor_ready()
+                if self.call_set_distance(1, 20) and self.call_set_distance(2, 20):
+                    current_state = "first_up"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            if current_state == "first_up":
                 if self.move_slider_to_height(20.2):
                     current_state = "3"
                 else:

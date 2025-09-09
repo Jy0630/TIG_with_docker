@@ -223,9 +223,9 @@ class App:
                     cup_positions[name] = 'left' if rel_x < 0 else 'right'
                 rospy.sleep(0.03)
 
-            # white_side = cup_positions.get('white', 'unknown')
-            # black_side = cup_positions.get('black', 'unknown')
-            # rospy.loginfo(f"White coffee is on the {white_side} side and black coffee is on the {black_side} side")
+            white_side = cup_positions.get('white', 'unknown')
+            black_side = cup_positions.get('black', 'unknown')
+            rospy.loginfo(f"White coffee is on the {white_side} side and black coffee is on the {black_side} side")
 
             cup_side = cup_positions.get(target_name, "")
 
