@@ -46,7 +46,7 @@ class WallNavigator:
         
         # Angle control parameters
         self.final_angle_thresholds = [30.0, 15.0, 1.5]; self.final_angle_speeds = [0.5, 0.35, 0.25]  
-        self.moving_align_thresholds = [30.0, 20.0, 10.0]; self.moving_align_speeds = [0.2, 0.15, 0.1]
+        self.moving_align_thresholds = [30.0, 20.0, 5.0]; self.moving_align_speeds = [0.2, 0.15, 0.1]
         
         # --- State Management ---
         self.state = "IDLE"; self.current_goal = None; self.is_active = False

@@ -13,14 +13,22 @@ import rospkg
 class RealSenseCamera:
     def __init__(self):
         self.pipeline = rs.pipeline()
-        config = rs.config()
-        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
-        self.pipeline.start(config)
-        self.align = rs.align(rs.stream.color)
-        print("RealSense Camera Initialized.")
+        self.started = False  # flag 紀錄 pipeline 是否成功啟動
+        try:
+            config = rs.config()
+            config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+            config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+            self.pipeline.start(config)
+            self.align = rs.align(rs.stream.color)
+            self.started = True
+            print("RealSense Camera Initialized.")
+        except Exception as e:
+            rospy.logerr(f"❌ Failed to start RealSense pipeline: {e}")
+            self.pipeline = None
 
     def get_aligned_images(self, retries=5):
+        if not self.started:
+            return None, None, None
         for i in range(retries):
             try:
                 frames = self.pipeline.wait_for_frames(timeout_ms=5000)
@@ -28,16 +36,23 @@ class RealSenseCamera:
                 depth_frame = aligned_frames.get_depth_frame()
                 color_frame = aligned_frames.get_color_frame()
                 if depth_frame and color_frame:
-                    depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+                    depth_intrin = depth_frame.profile.as_video_stream_profile().get_intrinsics()
                     img_color = np.asanyarray(color_frame.get_data())
                     return depth_intrin, img_color, depth_frame
             except RuntimeError:
-                rospy.loginfo(f"⚠️ Frame didn't arrive (retry {i+1}/{retries})")
+                rospy.logwarn(f"⚠️ Frame didn't arrive (retry {i+1}/{retries})")
         return None, None, None
 
     def stop(self):
-        self.pipeline.stop()
-        print("RealSense Camera Stopped.")
+        if self.started and self.pipeline is not None:
+            try:
+                self.pipeline.stop()
+                print("RealSense Camera Stopped.")
+            except RuntimeError:
+                rospy.logwarn("⚠️ Tried to stop pipeline, but it was not running.")
+        else:
+            print("ℹ️ Camera was never started, skip stopping.")
+
 
 # =============================================================================
 # ObjectDetector

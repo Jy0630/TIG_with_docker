@@ -28,7 +28,7 @@ class MainController:
         # self.orange_detect_client = rospy.ServiceProxy('detect_orange_goal', DetectOrangeGoal)
         self.dc_motor_ready = False
         self.ready_sub = rospy.Subscriber('/dc_zero_ready', Bool, self.ready_callback)
-        rospy.loginfo("Subscribing to /dc_ready topic for handshake.")
+        rospy.loginfo("Subscribing to /dc_zero_ready topic for handshake.")
 
         self.height_pub = rospy.Publisher('/slider_setpoint', Float32, queue_size=10)
         rospy.loginfo("Created Publisher to /slider_setpoint for DC motor control.")
@@ -247,7 +247,7 @@ class MainController:
         """當收到 /dc_zero_ready 的訊息時，更新就緒狀態旗標。"""
         if msg.data:
             self.dc_motor_ready = True
-            rospy.loginfo("Received 'dc_ready' signal from Arduino. DC motor is ready.")
+            rospy.loginfo("Received 'dc_zero_ready' signal from Arduino. DC motor is ready.")
             # 我們可以取消訂閱，因為這是一個一次性的信號
             self.ready_sub.unregister()
 
@@ -256,23 +256,23 @@ class MainController:
     # ==============================================================
 
     # --- NEW: 等待 Arduino 就緒的專用函式 ---
-    # def wait_for_dc_motor_ready(self, timeout_sec=3.0):
-    #     """等待直到收到來自 Arduino 的 /dc_ready 信號。"""
-    #     rospy.loginfo("Waiting for DC motor node to publish ready signal...")
-    #     start_time = rospy.Time.now()
-    #     rate = rospy.Rate(10)
+    def wait_for_dc_motor_ready(self, timeout_sec=3.0):
+        """等待直到收到來自 Arduino 的 /dc_zero_ready 信號。"""
+        rospy.loginfo("Waiting for DC motor node to publish ready signal...")
+        start_time = rospy.Time.now()
+        rate = rospy.Rate(10)
 
-    #     while not self.dc_motor_ready and not rospy.is_shutdown():
-    #         if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-    #             rospy.logerr(f"Timeout! Did not receive /dc_ready signal in {timeout_sec} seconds.")
-    #             return False
-    #         rate.sleep()
+        while not self.dc_motor_ready and not rospy.is_shutdown():
+            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
+                rospy.logerr(f"Timeout! Did not receive /dc_zero_ready signal in {timeout_sec} seconds.")
+                return False
+            rate.sleep()
         
-    #     return self.dc_motor_ready
+        return self.dc_motor_ready
 
 
     #dc
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=50.0):
+    def move_slider_to_height(self, target_height_cm, tolerance_cm=1, timeout_sec=30.0):
         start_wait = rospy.Time.now()
         while self.current_height is None:
             if (rospy.Time.now() - start_wait).to_sec() > timeout_sec / 2:
@@ -339,8 +339,9 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             if current_state == "first_up":
+                # self.wait_for_dc_motor_ready()
                 if self.move_slider_to_height(20.2):
-                    current_state = "3"
+                    current_state = "0"
                 else:
                     current_state = "ERROR_RECOVERY"
 
