@@ -1,9 +1,9 @@
 <launch>
-  <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
 
-  <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
-  
-  <node pkg="main_control" name="A_to_C_motor" type="A_to_C_motor.py" output="screen"/>
+   <node name="arduino_nano" pkg="rosserial_python" type="serial_node.py">
+      <param name="port" type="string" value="/dev/arduino_nano"/>
+      <param name="baud" type="int" value="57600"/>
+   </node>
 
-
+    <node pkg="main_control" type="task_launcher.py" name="task_launcher_node" output="screen" />
 </launch>
