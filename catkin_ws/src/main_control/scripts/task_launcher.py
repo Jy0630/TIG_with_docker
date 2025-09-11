@@ -21,7 +21,7 @@ class TaskLauncher:
             1: ["main_control", "coffee.launch"],
             2: ["main_control", "main.launch"],
             3: ["main_control", "s_shape.launch"],
-            4: ["main_control", "4.launch"],
+            4: ["main_control", "A_to_C_motor.launch"],
             5: ["main_control", "5.launch"]
         }
         

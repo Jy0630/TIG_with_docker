@@ -54,7 +54,7 @@ class SerialListenerNode:
                     
                     if button_id_str.isdigit():
                         button_id = int(button_id_str)
-                        rospy.loginfo("Received button ID from serial: %d", button_id)
+                        # rospy.loginfo("Received button ID from serial: %d", button_id)
                         
                         # 建立並發布 ROS 訊息
                         msg = UInt8()

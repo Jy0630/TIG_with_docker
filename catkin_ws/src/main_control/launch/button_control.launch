@@ -1,9 +1,14 @@
 <launch>
 
-   <node name="arduino_nano" pkg="rosserial_python" type="serial_node.py">
-      <param name="port" type="string" value="/dev/arduino_nano"/>
-      <param name="baud" type="int" value="57600"/>
-   </node>
+    <arg name="port" default="/dev/arduino_nano" />
+    <arg name="baudrate" default="115200" />
 
-    <node pkg="main_control" type="task_launcher.py" name="task_launcher_node" output="screen" />
+
+    <node pkg="main_control" type="serial_listener.py" name="serial_listener_node" output="screen">
+        <param name="port" value="$(arg port)" />
+        <param name="baudrate" value="$(arg baudrate)" />
+    </node>
+
+   <node pkg="main_control" type="task_launcher.py" name="task_launcher_node" output="screen" />
+
 </launch>
