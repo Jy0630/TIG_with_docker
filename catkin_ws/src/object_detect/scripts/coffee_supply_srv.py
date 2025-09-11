@@ -388,7 +388,7 @@ class CoffeeSupplyApp:
         }
         self.service = rospy.Service('CoffeeSupply', DetectCoffeeSupply, self.coffee_command)
 
-    def capture_detections(self, detector, frames=25, delay=0.01):
+    def capture_detections(self, detector, frames=5, delay=0.01):
         detections = []
         for _ in range(frames):
             depth_intrin, img_color, depth_frame = self.camera.get_aligned_images()
@@ -451,7 +451,7 @@ class CoffeeSupplyApp:
                     break
 
             cup_positions = {}
-            for det in self.capture_detections(self.cup_detector, frames=15, delay=0.01):
+            for det in self.capture_detections(self.cup_detector, frames=5, delay=0.01):
                 rel_x = det['xyz'][0] - self.positions[target_name][0]
                 cup_positions[det['class_name']] = 'left' if rel_x < 0 else 'right'
             cup_side = cup_positions.get(target_name, "")

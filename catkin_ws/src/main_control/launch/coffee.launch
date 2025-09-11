@@ -50,7 +50,7 @@
       <param name="port" type="string" value="/dev/arduino_mega_merge"/>
       <param name="baud" type="int" value="57600"/>
   </node>
-  <node pkg="step_motor" type="step" name="step" output="screen"/>
+  <!-- <node pkg="step_motor" type="step" name="step" output="screen"/> -->
   
 <!-- main_control -->
   <node pkg="main_control" type="coffee.py" name="coffee_client" output="screen" respawn="false"/>
