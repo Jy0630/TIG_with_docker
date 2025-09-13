@@ -333,17 +333,17 @@ class MainController:
             rospy.loginfo(f"====== Current State: {current_state} ======")
 
             if current_state == "hide":
-                if self.call_set_distance(1, 20) and self.call_set_distance(2, 20):
+                if self.detect_coffee_supply():
                     current_state = "first_up"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            if current_state == "first_up":
-                # self.wait_for_dc_motor_ready()
-                if self.move_slider_to_height(20.2):
-                    current_state = "0"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # if current_state == "first_up":
+            #     # self.wait_for_dc_motor_ready()
+            #     if self.move_slider_to_height(20.2):
+            #         current_state = "0"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
 #             elif current_state == "1":
 #                 if self.move_slider_to_height(55):

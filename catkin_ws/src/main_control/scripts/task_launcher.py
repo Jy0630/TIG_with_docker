@@ -20,9 +20,9 @@ class TaskLauncher:
         self.task_map = {
             1: ["main_control", "coffee.launch"],
             2: ["main_control", "main.launch"],
-            3: ["main_control", "s_shape.launch"],
-            4: ["main_control", "A_to_C_motor.launch"],
-            5: ["main_control", "5.launch"]
+            3: ["main_control", "A_to_C_motor.launch"],
+            4: ["main_control", "s_shape.launch"],
+            5: ["main_control", "s_shape_mirror.launch"]
         }
         
         self.active_process = None
@@ -70,11 +70,20 @@ class TaskLauncher:
         new_task_id = msg.data
         rospy.loginfo("Received button press ID: %d", new_task_id)
 
-        # check if the new task ID is valid
+        # if press 0 代表空白模式，只 terminate，不執行新任務
+        if new_task_id == 0:
+            rospy.loginfo("Blank mode triggered, only terminating current launchfile.")
+            if self.active_process and self.active_process.poll() is None:
+                self.terminate_active_process()
+            else:
+                rospy.loginfo("No active launchfile to terminate.")
+            return  # 直接 return，不執行後續的任務啟動
+
+        # 舊邏輯：判斷任務是否合法
         if new_task_id not in self.task_map:
             rospy.logwarn("No task associated with ID: %d. Ignoring.", new_task_id)
             return
-        
+
         # terminate first and run new
         if self.active_process and self.active_process.poll() is None:
             self.terminate_active_process()
@@ -84,7 +93,6 @@ class TaskLauncher:
         # launch new task
         package, launch_file = self.task_map[new_task_id]
         rospy.loginfo("Launching new task for ID %d: %s from package: %s", new_task_id, launch_file, package)
-        
         try:
             command = ["roslaunch", package, launch_file]
             # preexec_fn=os.setsid 使得 roslaunch 在一個新的進程組中運行
@@ -96,6 +104,7 @@ class TaskLauncher:
             rospy.logerr("Failed to launch task for ID %d: %s", new_task_id, e)
             self.active_process = None
             self.active_task_id = None
+
     
     def shutdown_hook(self):
         """

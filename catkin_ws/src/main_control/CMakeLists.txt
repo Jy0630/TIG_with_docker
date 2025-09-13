@@ -166,6 +166,7 @@ catkin_install_python(PROGRAMS
   src/A_to_C_motor.py
   src/control.py
   scripts/s_shape.py
+  scripts/s_shape_mirror.py
   scripts/main_control.py
   scripts/coffee.py
   scripts/task_launcher.py
