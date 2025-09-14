@@ -169,9 +169,9 @@ catkin_install_python(PROGRAMS
   scripts/s_shape_mirror.py
   scripts/main_control.py
   scripts/coffee.py
+  scripts/orange.py
   scripts/task_launcher.py
   scripts/serial_listener.py
-  
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
