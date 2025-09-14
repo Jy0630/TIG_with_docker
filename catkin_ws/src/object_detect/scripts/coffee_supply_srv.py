@@ -3,8 +3,7 @@ import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
 import rospy
-import math
-import rospkg, os
+import rospkg, os, traceback
 from object_detect.srv import DetectCoffeeSupply, DetectCoffeeSupplyResponse
 
 # =============================================================================
@@ -42,7 +41,6 @@ class RealSenseCamera:
             self.started = False
 
 
-
 # =============================================================================
 # Class: ObjectDetector
 # =============================================================================
@@ -67,10 +65,14 @@ class ObjectDetector:
         return float(np.median(depth_values)) if depth_values else None
 
     def _safe_class_name(self, names, class_id):
-        if isinstance(names, dict):
-            return names.get(class_id, str(class_id))
-        if isinstance(names, list):
-            return names[class_id] if 0 <= class_id < len(names) else str(class_id)
+        """安全取得類別名稱，避免索引錯誤"""
+        try:
+            if isinstance(names, dict):
+                return names.get(class_id, str(class_id))
+            if isinstance(names, (list, tuple)):
+                return names[class_id] if 0 <= class_id < len(names) else str(class_id)
+        except Exception as e:
+            rospy.logwarn(f"[ClassName] Invalid mapping: names={names}, class_id={class_id}, err={e}")
         return str(class_id)
 
     def detect(self, img_color):
@@ -88,7 +90,11 @@ class ObjectDetector:
             confs = result.boxes.conf.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
             names = result.names
+            rospy.logdebug(f"[YOLO] boxes={boxes.shape}, confs={len(confs)}, classes={len(classes)}, names={names}")
             for i, box in enumerate(boxes):
+                if i >= len(classes) or i >= len(confs):
+                    rospy.logwarn(f"[YOLO] Index mismatch: i={i}, classes={len(classes)}, confs={len(confs)}")
+                    continue
                 ux, uy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
                 detections.append({
                     'class_id': int(classes[i]),
@@ -98,7 +104,6 @@ class ObjectDetector:
                     'xyz': (round(ux,1), round(uy,1), 0.0)  # z 設為 0
                 })
         return detections
-
 
 
 # =============================================================================
@@ -113,13 +118,16 @@ class App:
         self.positions = {}
         self.camera = None
 
-    # 相對位置
     def get_relative_position(self, from_name, to_name):
         from_pos = self.positions.get(from_name.lower())
         to_pos = self.positions.get(to_name.lower())
         if from_pos is None or to_pos is None:
             return None
-        return tuple(round(to_pos[i] - from_pos[i], 3) for i in range(3))
+        if len(from_pos) < 2 or len(to_pos) < 2:
+            rospy.logwarn(f"Invalid positions: {from_pos}, {to_pos}")
+            return None
+        return tuple(round(to_pos[i] - from_pos[i], 3) for i in range(2))  
+
 
     def get_all_relative(self):
         tree_to_target = self.get_relative_position('tree', 'black') or self.get_relative_position('tree', 'white')
@@ -135,7 +143,7 @@ class App:
         self.positions = {}
         detections_all = []
         try:
-            # --- 多幀咖啡牌偵測 ---
+            # --- 多幀偵測 ---
             for _ in range(5):
                 img_color = self.camera.get_color_image()
                 if img_color is None:
@@ -150,10 +158,10 @@ class App:
 
             # --- 分群 ---
             object_groups = {}
-            distance_threshold = 50  # 用像素距離
+            distance_threshold = 50
             for det in detections_all:
                 name = det['class_name'].lower()
-                xy = np.array(det['xy'])  # 只用影像座標
+                xy = np.array(det['xy'])
                 group_list = object_groups.setdefault(name, [])
                 for group in group_list:
                     if np.linalg.norm(np.median(group, axis=0) - xy) < distance_threshold:
@@ -165,12 +173,14 @@ class App:
             # --- 選出 target ---
             target_name, target_xy = None, None
             for candidate in ['black', 'white']:
-                if candidate in object_groups:
+                if candidate in object_groups and object_groups[candidate]:
                     groups = object_groups[candidate]
-                    largest_group = max(groups, key=len)
-                    target_name = candidate
-                    target_xy = np.median(np.array(largest_group), axis=0)
-                    break
+                    if groups:
+                        largest_group = max(groups, key=len)
+                        if largest_group:
+                            target_name = candidate
+                            target_xy = np.median(np.array(largest_group), axis=0)
+                            break
 
             if not target_name:
                 rospy.loginfo("No coffee (black/white) group found.")
@@ -180,21 +190,21 @@ class App:
 
             # --- landmark ---
             for lm in ['tree', 'home']:
-                if lm in object_groups:
+                if lm in object_groups and object_groups[lm]:
                     groups = object_groups[lm]
-                    self.positions[lm] = tuple(np.median(np.array(max(groups, key=len)), axis=0))
+                    lg = max(groups, key=len)
+                    if lg:
+                        self.positions[lm] = tuple(np.median(np.array(lg), axis=0))
 
             # --- 桌號判斷 ---
             rels = self.get_all_relative()
             def dist(vec): return round(np.linalg.norm(vec),1) if vec is not None else None
-            tol = 20  # 影像座標容差
+            tol = 20
             def near(a,b): return a is not None and b is not None and abs(a-b)<tol
 
             dist_tree = dist(rels['tree_to_target'])
             dist_home = dist(rels['home_to_target'])
-            table_lookup = {
-                (160,70):1, (75,155):2, (205,150):3, (155,200):4  # 像素對應
-            }
+            table_lookup = {(160,70):1, (75,155):2, (205,150):3, (155,200):4}
             table = 0
             for (dt, dh), t in table_lookup.items():
                 if near(dist_tree, dt) and near(dist_home, dh):
@@ -211,8 +221,11 @@ class App:
                     continue
                 cup_dets = self.cup_color_detector.detect(img_color)
                 for det in cup_dets:
+                    if 'xy' not in det or len(det['xy']) != 2:
+                        rospy.logwarn(f"[Cup] Invalid det.xy: {det}")
+                        continue
                     name = det['class_name'].lower()
-                    rel_x = det['xy'][0] - self.positions[target_name][0]  # 用影像座標 x
+                    rel_x = det['xy'][0] - self.positions.get(target_name,(0,0))[0]
                     cup_positions[name] = 'left' if rel_x < 0 else 'right'
                 rospy.sleep(0.03)
 
@@ -231,6 +244,7 @@ class App:
 
         except Exception as e:
             rospy.logerr(f"[App] coffee_command exception: {e}")
+            rospy.logerr(traceback.format_exc())
             return DetectCoffeeSupplyResponse(success=False, target_name="", table=0, cup_side="")
         finally:
             if self.camera:
@@ -240,6 +254,7 @@ class App:
         if self.camera:
             self.camera.stop()
         rospy.loginfo("Coffee Supply Server Shutdown.")
+
 
 # =============================================================================
 # Main
