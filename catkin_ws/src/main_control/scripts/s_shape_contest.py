@@ -94,6 +94,8 @@ class MainController:
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
             return False
+        
+        
 
 # 在 MainController 類別中，與您現有的 navigate_by_wall 函式並列
 
